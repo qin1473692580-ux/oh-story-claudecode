@@ -151,7 +151,7 @@ agent-browser --cdp {cdp_port} eval 'JSON.stringify(Array.from(document.querySel
 #### 3.5 导航到目标页面并提取正文
 
 ```bash
-# 用提取到的真实 URL 导航（不是构造 URL，是从搜索结果 DOM 中提取的）
+# 用提取到的真实 URL 导航（不要构造 URL；从搜索结果 DOM 中提取）
 agent-browser --cdp {cdp_port} eval "window.location.replace('{提取到的URL}')"
 agent-browser --cdp {cdp_port} wait 5000
 
