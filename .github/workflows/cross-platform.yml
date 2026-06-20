@@ -19,6 +19,14 @@ jobs:
         run: bash scripts/check-story-setup-deployment.sh
       - name: Guard against bare python3 invocations
         run: bash scripts/check-python-invocation.sh
+      - name: Guard hook locale safety (LC_ALL=C + no full-width char classes)
+        run: bash scripts/check-hook-locale-safety.sh
+      # Generate a GBK-class locale so the hook test's Part 2 runs end-to-end here,
+      # not just on macOS. Best-effort: if it fails the test self-skips Part 2.
+      - name: Generate zh_CN.GBK locale (Chinese Windows simulation)
+        run: sudo localedef -f GBK -i zh_CN zh_CN.GBK || sudo locale-gen zh_CN.GBK || true
+      - name: Hook path-encoding portability (cp936 + real GBK locale)
+        run: bash scripts/test-hook-encoding-portable.sh
       - name: Portable char-count (real interpreter)
         run: bash scripts/test-charcount-portable.sh
       - name: Portable char-count (simulated Windows Store stub)
@@ -58,6 +66,10 @@ jobs:
       - name: Portable char-count (simulated Windows Store stub)
         shell: bash
         run: bash scripts/test-charcount-portable.sh --stub
+      # Real Windows Git Bash path: the cp936 stdout bug (issue #164) bites here.
+      - name: Hook path-encoding portability (cp936 + GBK locale if present)
+        shell: bash
+        run: bash scripts/test-hook-encoding-portable.sh
 
   macos:
     runs-on: macos-latest
@@ -83,3 +95,5 @@ jobs:
         run: bash scripts/test-charcount-portable.sh
       - name: Portable char-count (simulated Windows Store stub)
         run: bash scripts/test-charcount-portable.sh --stub
+      - name: Hook path-encoding portability (cp936 + GBK locale if present)
+        run: bash scripts/test-hook-encoding-portable.sh

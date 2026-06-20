@@ -11,6 +11,15 @@ set -euo pipefail
 
 source "$(dirname "$0")/lib/common.sh"
 
+# 全程走字节稳定区域：本 hook 在中文路径上做 bash 通配（中间目录是中文书名时
+# 细纲_第*章*.md 在 GBK 区域会 NOMATCH）、sed 提章号、case 匹配，还内嵌 python 抽取
+# 中文路径。Windows 中文系统若导出 GBK/GB2312 区域设置，这些都会按多字节错误解码 UTF-8
+# 而失效。强制 C 区域走字节匹配（UTF-8 字面量 vs UTF-8 字节相等）才稳定（issue #164）。
+# 必须在内嵌 python 之前 export：LC_ALL=C 下 python 在 Windows 走 Unicode 环境 API、在
+# 新版 python 会把 C 强转 UTF-8，都能正确解码中文输入；反而是用户的 GBK 区域会把 python
+# 读到的 UTF-8 环境变量解成乱码。输出已用 sys.stdout.buffer 直写 UTF-8 字节、与区域无关。
+export LC_ALL=C
+
 HOOK_INPUT="${CLAUDE_TOOL_INPUT:-}"
 if [ -z "$HOOK_INPUT" ] && [ ! -t 0 ]; then
   HOOK_INPUT="$(cat)"
@@ -20,6 +29,9 @@ export HOOK_INPUT
 # 从 tool 输入 JSON 提取目标文件路径。探测真正可用的解释器：Windows 上
 # `command -v python3` 会命中 Microsoft Store 占位程序（exit 49），所以实跑
 # 一次 -c "" 而非只查 PATH。
+# 输出走 sys.stdout.buffer 直写 UTF-8 字节：Windows 中文系统 python stdout 默认
+# cp936，文本模式输出会把中文路径编成 GBK，和脚本里的 UTF-8 字面量（"正文"、第N章）
+# 字节不一致，导致每个比较恒假、守卫静默放行（issue #164）。
 extract_target_path() {
   local PYBIN=""
   for c in python3 python py; do
@@ -52,7 +64,7 @@ def dig(value):
 p = dig(obj)
 if not p:
     sys.exit(1)
-print(p)
+sys.stdout.buffer.write(p.encode("utf-8"))
 PY
 }
 

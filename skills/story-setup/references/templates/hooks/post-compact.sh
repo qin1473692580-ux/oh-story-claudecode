@@ -5,6 +5,9 @@ set -euo pipefail
 # 加载公共函数库
 source "$(dirname "$0")/lib/common.sh"
 
+# 字节稳定区域：经 discover_active_book 处理中文书名/路径，GBK 区域下才不会乱（issue #164 同类）。
+export LC_ALL=C
+
 ROOT=$(project_root)
 BOOK_DIR=$(discover_active_book)
 

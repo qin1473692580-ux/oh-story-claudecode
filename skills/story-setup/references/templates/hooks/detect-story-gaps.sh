@@ -6,6 +6,12 @@ set -euo pipefail
 # 加载公共函数库（project_root + discover_all_books）
 source "$(dirname "$0")/lib/common.sh"
 
+# 后续 awk 解析中文伏笔表 + find/grep 中文路径。Windows 中文系统若导出 GBK 区域设置，
+# gawk 会把 UTF-8 状态值按 GBK 多字节解码失败，trim 和 == 比较全乱、每行误报。强制 C
+# 区域走字节匹配（UTF-8 字面量 vs UTF-8 内容字节相等）才稳定（issue #164 同类）。本 hook
+# 无内嵌 python，可直接在顶部 export。
+export LC_ALL=C
+
 ROOT=$(project_root)
 OUTPUT=""
 HAS_WARNINGS=false
@@ -45,9 +51,11 @@ for BOOK_DIR in "${BOOK_DIRS[@]}"; do
   if [ -f "$BOOK_DIR/追踪/伏笔.md" ]; then
     # 仅检查表格数据行中的状态列。正常开放状态（未埋/已埋）不报警，
     # 避免长篇项目每次 SessionStart 都触发全量伏笔审计。
-    # 行为回归脚本：scripts/check-hook-regex-sync.sh
+    # 行为回归脚本：scripts/check-hook-regex-sync.sh（区域设置健壮性由 export LC_ALL=C 保证）
     ABNORMAL_FORESHADOW=$(awk -F'|' '
-      function trim(s) { gsub(/^[[:space:]]+|[[:space:]]+$/, "", s); return s }
+      # 含全角空格 U+3000：LC_ALL=C 下 [[:space:]] 只认 ASCII 空白，单元格用全角空格补白时
+      # 会留在 status 里被误判为异常；用交替补上全角空格（不能进字符组，否则触发跨区域 bug）。
+      function trim(s) { gsub(/^([[:space:]]|　)+|([[:space:]]|　)+$/, "", s); return s }
       /^\|/ && $0 !~ /^\|[-[:space:]|]+$/ {
         status=trim($6)
         if (status == "" || status == "状态" || status ~ /^状态\{/) next

@@ -35,7 +35,13 @@ discover_active_book() {
 
   if [ -f "$root/.active-book" ]; then
     local active
-    active=$(sed -n '1p' "$root/.active-book" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' || true)
+    # LC_ALL=C：书名是中文 UTF-8。Windows 中文系统若导出 GBK 区域设置，trim 的
+    # s/^[[:space:]]*// 会逼 sed 按 GBK 解码整行，短书名（如「让你管账号」「修仙传」）的
+    # UTF-8 字节是非法 GBK 序列 → BSD sed 报 illegal byte sequence、active 被吞成空 →
+    # .active-book 被忽略、误解析到 find 到的第一本书。强制 C 区域走字节处理才稳。
+    # 本库被无 export 的 session-*/pre-compact/post-compact 复用，故在此 per-command 兜底，
+    # 不在库里 export（避免给调用方留全局副作用，与文件头「不覆盖调用方 shell 选项」一致）。
+    active=$(LC_ALL=C sed -n '1p' "$root/.active-book" | LC_ALL=C sed 's/^[[:space:]]*//;s/[[:space:]]*$//' || true)
     if [ -n "$active" ]; then
       resolve_project_path "$active"
       return

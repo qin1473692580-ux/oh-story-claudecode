@@ -17,6 +17,11 @@ fi
 source "$HOOK_DIR/lib/common.sh"
 source "$HOOK_DIR/lib/sentinel.sh"
 
+# 字节稳定区域：本 hook 经 discover_active_book 处理中文书名/路径。Windows 中文系统若导出
+# GBK 区域设置，locale 敏感操作会按多字节错解 UTF-8。强制 C 区域走字节处理才稳（issue #164
+# 同类）。本 hook 无内嵌 python，可直接 export。
+export LC_ALL=C
+
 ROOT=$(project_root)
 
 # story-setup 部署后的一次性重启确认。custom agents 只在会话启动时被注册成

@@ -160,6 +160,11 @@ if ! is_git_commit_command; then
   exit 0
 fi
 
+# 后续 case + grep 在中文路径/正文内容上做匹配。Windows 中文系统若导出 GBK 区域设置，
+# grep 按 GBK 多字节解码 UTF-8 内容会乱。强制 C 区域走字节匹配才稳定（issue #164 同类）。
+# 放在 is_git_commit_command（内嵌 python）之后，避免影响其输入解码。
+export LC_ALL=C
+
 ROOT=$(project_root)
 GIT_ROOT=$(git -C "$ROOT" rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$ROOT")
 WARNINGS=""
@@ -178,9 +183,12 @@ while IFS= read -r -d '' file; do
   fi
 
   # 检查正文文件是否包含硬编码的情节值
+  # 冒号/空白都用交替而不是把全角字符塞进方括号字符组：含全角字符的字符组在 C 区域会被
+  # 拆成单字节、漏匹配；(：|:) 同时命中全角「：」和半角「:」，([[:space:]]|　) 在 LC_ALL=C 下
+  # 也认全角空格 U+3000（否则全角空格分隔的写法会漏检/误判）。
   case "$file" in
     正文.md|*/正文.md|正文/*|*/正文/*)
-      HARDCODED=$(grep -nE "(身高|体重|年龄)[[:space:]]*[：:][[:space:]]*[0-9]+" "$FULL_PATH" 2>/dev/null || true)
+      HARDCODED=$(grep -nE "(身高|体重|年龄)([[:space:]]|　)*(：|:)([[:space:]]|　)*[0-9]+" "$FULL_PATH" 2>/dev/null || true)
       if [ -n "$HARDCODED" ]; then
         WARNINGS="$WARNINGS\n⚠ $file: Hardcoded character attributes found (should reference 设定/ files):\n$HARDCODED"
       fi
@@ -190,7 +198,7 @@ while IFS= read -r -d '' file; do
   # 检查设定文件的必填字段（结构化匹配：key:value 格式）
   case "$file" in
     设定/*|*/设定/*)
-      if ! grep -qE "^[[:space:]]*(名字|姓名|名称|name|Name)[[:space:]]*[：:]" "$FULL_PATH" 2>/dev/null; then
+      if ! grep -qE "^([[:space:]]|　)*(名字|姓名|名称|name|Name)([[:space:]]|　)*(：|:)" "$FULL_PATH" 2>/dev/null; then
         WARNINGS="$WARNINGS\n⚠ $file: Setting file missing required fields (name/名字: ...)"
       fi
       ;;

@@ -6,6 +6,9 @@ set -euo pipefail
 # 加载公共函数库
 source "$(dirname "$0")/lib/common.sh"
 
+# 字节稳定区域：经 discover_active_book 处理中文书名/路径，GBK 区域下才不会乱（issue #164 同类）。
+export LC_ALL=C
+
 # 默认禁用 session-log.txt 写入（避免每次会话结束都污染工作树）。
 # 显式 STORY_SESSION_LOG=1 才启用；即使启用，也只写入已存在的长篇追踪目录。
 if [ "${STORY_SESSION_LOG:-0}" != "1" ]; then
