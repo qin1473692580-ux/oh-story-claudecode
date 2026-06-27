@@ -135,6 +135,18 @@ assert_grep 'lib/common\.sh' "$SKILL_FILE" "SKILL.md must mention hooks/lib/comm
 assert_grep 'lib/sentinel\.sh' "$SKILL_FILE" "SKILL.md must mention hooks/lib/sentinel.sh"
 echo "  OK TS1 hook dependency completeness"
 
+# TS1b — SessionStart 部署自检名单必须覆盖所有 hook 脚本（防新增 hook 漏登记，#195 review）
+selfcheck_line="$(grep -E 'for hook in .*; do' "$HOOKS_DIR/session-start.sh" | head -1)"
+[ -n "$selfcheck_line" ] || fail "session-start.sh 缺少 hook 自检 for 循环"
+while IFS= read -r hookfile; do
+  base="$(basename "$hookfile")"
+  case "$selfcheck_line" in
+    *" $base "*) : ;;
+    *) fail "session-start.sh 部署自检名单漏列 hook：$base（新增 hook 须同步加入该名单）" ;;
+  esac
+done < <(find "$HOOKS_DIR" -maxdepth 1 -name '*.sh' -type f)
+echo "  OK TS1b session-start self-check lists all hook scripts"
+
 # TS2 — Deployment checklist/manifest parseability
 for header in 'Source path' 'Target path' 'Owner class' 'Merge mode' 'Validation check'; do
   assert_grep "$header" "$SKILL_FILE" "deployment manifest missing column: $header"

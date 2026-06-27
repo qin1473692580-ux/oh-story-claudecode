@@ -139,6 +139,32 @@ printf '%s' "$out" | assert_json || fail "stop invalid JSON: $out"
 
 echo "  OK session/compact/stop JSON"
 
+# ── Stop content sweep: Codex 无 PostToolUse，回合结束对 git 改动正文复扫硬信号（轻量网）──
+# 新写一章带截断、留作 git 改动（untracked）→ stop 必须点名并报截断；非改动文件不复扫。
+PAD6='江晨握紧拳头慢慢走向门口盘算着每一步。'  # bash 重复填充，避开 Windows python 文本 stdout 的 cp1252 崩溃
+printf '# 第6章\n\n%s\n他冲过去一拳砸在' "$PAD6$PAD6$PAD6$PAD6$PAD6$PAD6" > "$ROOT/book/正文/第006章_截断.md"
+out="$(run_hook stop '{"hook_event_name":"Stop"}')"
+printf '%s' "$out" | assert_json || fail "stop content-sweep invalid JSON: $out"
+echo "$out" | grep -q '截断' || fail "stop did not flag truncated git-changed prose: $out"
+echo "$out" | grep -q '第006章_截断.md' || fail "stop did not name the changed prose file: $out"
+# 已提交（无 git 改动）的章节不应被复扫——只兜本回合改动集。
+git -C "$ROOT" add -A && git -C "$ROOT" commit -qm wip >/dev/null 2>&1
+out="$(run_hook stop '{"hook_event_name":"Stop"}')"
+printf '%s' "$out" | python3 -c 'import json,sys; o=json.loads(sys.stdin.buffer.read().decode("utf-8")); assert "截断" not in o.get("systemMessage","")' || fail "stop re-flagged already-committed prose: $out"
+echo "  OK stop content sweep (git-changed only)"
+
+# ── SessionStart continuity: 追踪 staleness（写了章但 上下文.md 没跟上）+ 章节标题去重 ──
+mkdir -p "$ROOT/contbook/正文" "$ROOT/contbook/追踪"
+printf '旧上下文\n' > "$ROOT/contbook/追踪/上下文.md"
+sleep 1
+printf '# 第1章 决战\n正文。\n' > "$ROOT/contbook/正文/第001章_决战.md"
+printf '# 第2章 决战\n正文。\n' > "$ROOT/contbook/正文/第002章_决战.md"
+out="$(run_hook session-start '{"hook_event_name":"SessionStart"}')"
+assert_additional_context "$out" "session-start continuity"
+echo "$out" | grep -q '续写会断线' || fail "session-start missed 追踪 staleness: $out"
+echo "$out" | grep -q '标题重复' || fail "session-start missed dup-title: $out"
+echo "  OK session-start continuity (追踪 staleness + dup-title)"
+
 nested="$ROOT/nested/a/b"
 mkdir -p "$nested"
 out="$(cd "$TMP_DIR" && printf '{"cwd":"%s","tool_name":"Write","tool_input":{"file_path":"book/正文/第003章_嵌套.md","content":"正文"}}' "$nested" | python3 "$HOOK" pre-tool-prose-guard)"

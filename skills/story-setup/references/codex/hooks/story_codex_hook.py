@@ -134,6 +134,195 @@ def hook_context(event: str, text: str) -> dict[str, Any]:
     return {"hookSpecificOutput": {"hookEventName": event, "additionalContext": text}}
 
 
+# ── 轻量确定性网（与 templates/hooks/check-prose-after-write.sh 内嵌 python 同实现，保持 parity）──
+# 只兜「硬信号」（漏跑最伤、退化模型自己发现不了的）：截断 / 生成拒绝语·AI 自指 /
+# 工程词漏进正文 / 紧邻整行复读。不依赖 check-degeneration.js，是独立的轻量网。
+_NET_TERMINAL = set("。！？…”』」）)!?.~—")
+_NET_QUOTE_OPENERS = ("「", "“", "‘", "『", '"')
+_NET_SOFT_PATTERNS = [
+    (re.compile(r'作为(一个)?(AI|人工智能|大?语言模型|智能助手|聊天助手)(?=，|,|。|、|；|;|：|:|！|!|？|\?|\s|）|\)|」|』|"|】|我|无法|不能|没法|$)'), "AI 自指"),
+    (re.compile(r"^(Sure|Certainly|Here'?s|As an AI|I (?:cannot|can't|am unable|apologize))"), "英文 AI 腔"),
+    (re.compile(r"我(无法|不能)(继续(写|创作|生成|下去|输出)?|生成(内容|文本|正文)?|创作|续写|写作|完成(这个|本)?(章|篇|创作|请求)?)"), "生成拒绝语"),
+]
+_NET_HARD_PATTERNS = [
+    (re.compile(r"[（(](此处|以下|这里|下文|后续)?[^）)]{0,10}(省略|略去|略过)[^）)]{0,10}[）)]"), "占位符（括号省略）"),
+    (re.compile(r"(TODO|占位符|placeholder|待补充|此处待填|此处待补)"), "占位符"),
+    (re.compile(r"(细纲|情节点|卷纲|功能标签|目标情绪|字数目标|章首钩子|章尾钩子|任务描述)"), "工程词泄漏"),
+    (re.compile("�"), "乱码（替换字符）"),
+]
+
+
+def _net_is_skippable(stripped: str) -> bool:
+    if not stripped:
+        return True
+    if stripped[0] == "#":
+        return True
+    if stripped == "---":
+        return True
+    if re.match(r"^[-—=*·•\s]+$", stripped):
+        return True
+    return False
+
+
+def prose_net_findings(text: str) -> list[str]:
+    findings: list[str] = []
+    content: list[tuple[int, str]] = []
+    for i, raw in enumerate(text.split("\n"), 1):
+        s = raw.strip()
+        if _net_is_skippable(s):
+            continue
+        content.append((i, s))
+        is_dialogue = s[0] in _NET_QUOTE_OPENERS
+        hit = False
+        if not is_dialogue:
+            for rx, label in _NET_SOFT_PATTERNS:
+                m = rx.search(s)
+                if m:
+                    findings.append(f"第{i}行 元信息泄漏（{label}）：「{m.group(0)[:20]}」")
+                    hit = True
+                    break
+        if hit:
+            continue
+        for rx, label in _NET_HARD_PATTERNS:
+            m = rx.search(s)
+            if m:
+                findings.append(f"第{i}行 {label}：「{m.group(0)[:20]}」")
+                break
+    for (la, sa), (lb, sb) in zip(content, content[1:]):
+        if sa == sb and len(sa) >= 8:
+            findings.append(f"第{lb}行 紧邻复读：整行与上一行完全相同「{sa[:20]}」")
+    if content:
+        ln, last = content[-1]
+        if last and last[-1] not in _NET_TERMINAL:
+            findings.append(f"第{ln}行 疑似截断：结尾「…{last[-12:]}」未以标点收束")
+    return findings
+
+
+def _is_prose_path(root: Path, abs_path: Path) -> bool:
+    """正文文件判定（与 check-prose-after-write.sh 的 over-capture 门一致）：
+    短篇 {书}/正文.md 且同目录有 设定.md；长篇 {书}/正文/第N章*.md 且 {书} 有 大纲/追踪/设定。"""
+    base = abs_path.name
+    parent = abs_path.parent.name
+    if base == "正文.md":
+        return (abs_path.parent / "设定.md").exists()
+    if parent == "正文" and re.match(r"^第.*章.*\.md$", base):
+        book = abs_path.parent.parent
+        return (book / "大纲").is_dir() or (book / "追踪").is_dir() or (book / "设定").is_dir() or (book / "设定.md").exists()
+    return False
+
+
+def find_changed_prose_files(root: Path) -> list[Path]:
+    """本回合改动过的正文文件（git 改动 + untracked），用于 Stop 兜底——Codex 无 PostToolUse，
+    故内容网在回合结束的 Stop 事件按 git 改动集复扫。非 git 仓库或无改动则空（best-effort）。"""
+    out: list[Path] = []
+    seen: set[str] = set()
+    for args in (
+        ["git", "-C", str(root), "-c", "core.quotepath=false", "diff", "--name-only", "-z", "--diff-filter=ACM"],
+        ["git", "-C", str(root), "-c", "core.quotepath=false", "diff", "--name-only", "--cached", "-z", "--diff-filter=ACM"],
+        ["git", "-C", str(root), "-c", "core.quotepath=false", "ls-files", "--others", "--exclude-standard", "-z"],
+    ):
+        try:
+            raw = subprocess.check_output(args, stderr=subprocess.DEVNULL)
+        except Exception:
+            continue
+        for chunk in raw.split(b"\0"):
+            if not chunk:
+                continue
+            rel = chunk.decode("utf-8", errors="ignore")
+            if not rel.endswith(".md"):
+                continue
+            abs_path = (root / rel).resolve()
+            key = str(abs_path)
+            if key in seen or not abs_path.exists():
+                continue
+            if _is_prose_path(root, abs_path):
+                seen.add(key)
+                out.append(abs_path)
+    return out
+
+
+def _wordcount_finding(abs_path: Path, text: str) -> str | None:
+    """字数欠账（仅长篇分章正文）：从 大纲/细纲_第N章*.md 读「字数目标」，实际 < 90% 提示。
+    与 check-prose-after-write.sh 内嵌 python / opencode wordcountFinding 同实现。"""
+    base = abs_path.name
+    if abs_path.parent.name != "正文":
+        return None
+    m = re.match(r"^第0*(\d+)章", base)
+    if not m:
+        return None
+    num = m.group(1)
+    target = None
+    for f in (abs_path.parent.parent / "大纲").glob("细纲_第*章*.md"):
+        fm = re.search(r"细纲_第0*(\d+)章", f.name)
+        if not fm or fm.group(1) != num:
+            continue
+        try:
+            txt = f.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        tm = re.search(r"字数目标[^0-9]{0,6}(\d{3,6})", txt)
+        if tm:
+            target = int(tm.group(1))
+        break
+    if not target:
+        return None
+    actual = len(text)
+    if actual < target * 0.9:
+        return (f"字数：第{num}章 实际 {actual} 字 < 目标 {target} 的 90%（{int(target*0.9)}）。"
+                f"对照细纲字数预算定位欠账的密点、一次性重写到配额，别挤牙膏回炉。")
+    return None
+
+
+def _discover_all_books(root: Path) -> list[Path]:
+    books: list[Path] = []
+    seen: set[str] = set()
+    for pattern in ("**/追踪", "**/正文", "**/正文.md"):
+        for hit in root.glob(pattern):
+            if any(part.startswith(".") for part in hit.relative_to(root).parts):
+                continue
+            book = hit.parent
+            key = str(book.resolve())
+            if key not in seen:
+                seen.add(key)
+                books.append(book)
+    return books
+
+
+def continuity_findings(root: Path) -> list[str]:
+    """跨批连续性兜底：① 追踪 staleness（写了章但 上下文.md 没跟上 → 续写会断线）；
+    ② 章节标题去重（两章同名多半是误复制）。模型无关，回合/会话边界提醒，无问题则静默。
+    扫描范围 repo-wide（与缺口检测一致），非活跃书也提醒——有意为之，不按 .active-book 收窄；
+    staleness 用 mtime +1 秒容差，是启发式 advisory（checkout / 带 -p 拷贝可能偏差）。"""
+    msgs: list[str] = []
+    for book in _discover_all_books(root):
+        body_dir = book / "正文"
+        chapters = sorted(body_dir.glob("第*章*.md")) if body_dir.is_dir() else []
+        # ① 追踪 staleness（仅长篇：有 追踪/上下文.md）
+        ctx = book / "追踪" / "上下文.md"
+        if chapters and ctx.exists():
+            newest = max((c.stat().st_mtime for c in chapters), default=0)
+            try:
+                ctx_m = ctx.stat().st_mtime
+            except Exception:
+                ctx_m = 0
+            if newest > ctx_m + 1:
+                latest = max(chapters, key=lambda c: c.stat().st_mtime).name
+                msgs.append(f"[continuity] {safe_rel(root, book)}：正文已更新到「{latest}」但 追踪/上下文.md 更早，续写会断线——补更 上下文.md/伏笔.md 再继续。")
+        # ② 标题去重（按文件名 第N章_标题 的标题部分）
+        titles: dict[str, list[str]] = {}
+        for c in chapters:
+            mt = re.match(r"^第0*\d+章[_\- 　]+(.+)$", c.stem)
+            if not mt:
+                continue
+            key = mt.group(1).strip()
+            if key:
+                titles.setdefault(key, []).append(c.name)
+        for title, files in titles.items():
+            if len(files) > 1:
+                msgs.append(f"[continuity] {safe_rel(root, book)}：{len(files)} 章标题重复「{title}」（{('、'.join(files))[:60]}），建议改名。")
+    return msgs
+
+
 def session_start() -> None:
     root = project_root()
     messages: list[str] = []
@@ -151,6 +340,7 @@ def session_start() -> None:
             messages.append(f"[story context] Active book: {safe_rel(root, book)}. Read {safe_rel(root, ctx)} before continuing long-form writing.")
         else:
             messages.append(f"[story context] Active story project detected: {safe_rel(root, book)}.")
+    messages.extend(continuity_findings(root))
     if messages:
         emit(hook_context("SessionStart", "\n".join(messages)))
 
@@ -439,7 +629,32 @@ def compact_summary(event: str) -> None:
 
 
 def stop_event() -> None:
-    # Stop hooks require JSON on stdout. Default: no-op JSON success.
+    # Codex 无 PostToolUse，正文内容网在回合结束的 Stop 事件兜底：对本回合 git 改动过的正文
+    # 复扫硬信号（截断/拒绝语/工程词/复读）。非阻塞、无发现静默；解析失败一律 {continue:True}。
+    # Stop hooks require JSON on stdout.
+    try:
+        root = project_root()
+        blocks: list[str] = []
+        for abs_path in find_changed_prose_files(root):
+            try:
+                text = abs_path.read_text(encoding="utf-8")
+            except Exception:
+                continue
+            findings = prose_net_findings(text)
+            wc = _wordcount_finding(abs_path, text)
+            if wc:
+                findings.append(wc)
+            if findings:
+                blocks.append(f"=== {safe_rel(root, abs_path)} ===\n" + "\n".join(findings))
+        if blocks:
+            emit({
+                "continue": True,
+                "systemMessage": "=== 正文兜底检测（回合结束复扫，模型无关）===\n硬信号命中即回正文改掉、复扫到净：\n"
+                + "\n".join(blocks),
+            })
+            return
+    except Exception:
+        pass
     emit({"continue": True})
 
 

@@ -37,7 +37,7 @@ fi
 # 部署自检：.story-deployed 存在但 hooks 文件被误删时发出警告
 if sentinel_exists "$ROOT/.story-deployed"; then
   MISSING_HOOKS=""
-  for hook in session-start.sh session-end.sh detect-story-gaps.sh pre-compact.sh post-compact.sh validate-story-commit.sh guard-outline-before-prose.sh lib/common.sh lib/sentinel.sh; do
+  for hook in session-start.sh session-end.sh detect-story-gaps.sh pre-compact.sh post-compact.sh validate-story-commit.sh guard-outline-before-prose.sh check-prose-after-write.sh lib/common.sh lib/sentinel.sh; do
     if [ ! -f "$ROOT/.claude/hooks/$hook" ]; then
       MISSING_HOOKS+="$hook "
     fi
