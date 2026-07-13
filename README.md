@@ -1,8 +1,20 @@
 [English](README_EN.md) | **中文**
 
-# oh-story-claudecode
+# oh-story-claudecode（个人强化版）
 
 网文写作 skill 包，覆盖长篇与短篇网络小说的扫榜、拆文、写作、去AI味、封面图全流程。内置适配 Claude Code、OpenCode、OpenClaw、Codex CLI、workbuddy；能读取项目文件的 Web AI / Agent 环境也可按通用 skills 路径使用。
+
+> 本仓库基于 [worldwonderer/oh-story-claudecode](https://github.com/worldwonderer/oh-story-claudecode) 二次开发（MIT 协议），源自一次真实的 9 章 / 2 万字长篇写作实战复盘——把实战中踩过的坑改回工具本身，而不是每次靠人工记住。
+
+### 相比上游的改进
+
+- **Phase 5 质检步骤硬性化**：一致性检查、去AI味独立审查从"如果部署了可以 spawn"改成硬性必须项，不再因软性措辞被连续多章静默跳过
+- **逐章质检进度表**：新增 `追踪/质检进度.md`，机械可查每章各项检查有没有跑过，不用翻叙述性日志找答案
+- **伏笔状态列动态定位**：`detect-story-gaps.sh` 不再硬编码列号，改为运行时读表头动态定位"状态"列，修复了协议模板、真实项目、测试夹具三种不同表格列序下的误判
+- **对话密度确定性统计**：`check-ai-patterns.js` 新增 info 级别的对话密度输出，不用每次手写脚本现算
+- **独角戏对话密度补救技法**：`dialogue-mastery.md` 补充电话转对话、对信物自语转独立引号句两个可复用技法
+- **双 POV 接力钩子措辞红线**：细纲模板补充说明，避免"他/她不知道的是……"式提示被字面照抄进正文而违反去AI味硬规则
+- **发布前格式化导出**：新增 `export-for-platform.js`，只做标题+正文分离的纯文本导出，不碰登录/发布
 
 ## 核心思路
 

@@ -2,9 +2,21 @@
 
 **English** | [中文](README.md)
 
-# oh-story-claudecode
+# oh-story-claudecode (personal fork)
 
 A web novel writing skill pack with built-in adapters for Claude Code, OpenCode, OpenClaw, Codex CLI, and workbuddy. Web AI / agent environments that can read project files can use the generic skills path. Covers the full pipeline for long-form and short-form Chinese web novels: trend scanning, deconstruction, writing, AI tone removal, and cover generation.
+
+> This repo is a fork of [worldwonderer/oh-story-claudecode](https://github.com/worldwonderer/oh-story-claudecode) (MIT licensed), grown out of a real 9-chapter / ~20k-character long-form writing retrospective — feeding lessons learned back into the tool itself instead of just remembering them by hand each time.
+
+### Changes vs. upstream
+
+- **Phase 5 QA steps are now mandatory**: the consistency-checker and independent AI-tone review used to be worded as "spawn if deployed", which let them get silently skipped across several chapters in a row. Now hard-required.
+- **Per-chapter QA progress table**: new `追踪/质检进度.md` makes it mechanically checkable whether each QA sub-step actually ran, instead of scrolling through prose logs.
+- **Dynamic foreshadow status-column detection**: `detect-story-gaps.sh` no longer hardcodes a column index — it locates the "status" column from the header row at runtime, fixing false positives across three different real-world table layouts (protocol template, an actual project, and the test fixture).
+- **Deterministic dialogue-density stat**: `check-ai-patterns.js` now emits an info-level dialogue-density figure instead of requiring a hand-written script every time.
+- **Solo-scene dialogue techniques**: `dialogue-mastery.md` documents two reusable patterns (phone-call-as-dialogue, self-talk-to-object) for chapters with only one character on stage.
+- **Dual-POV hook phrasing guardrail**: the outline template now warns that "he/she doesn't know that..." hook phrasing can't be copied verbatim into prose without tripping the anti-AI-tone hard rule.
+- **Pre-publish plain-text export**: new `export-for-platform.js` does title/body extraction for copy-paste only — no login, no submission, no credential handling.
 
 ## Core Approach
 
