@@ -58,6 +58,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 | `skills/story-setup/references/agent-references/*.md` | `.claude/skills/story-setup/references/agent-references/*.md` | story-setup managed | replace | every `story-setup/references/agent-references/*.md` reference resolves |
 | `skills/story-setup/references/templates/settings-hooks.json` | `.claude/settings.local.json` | user+managed | merge by hook command | hook JSON valid and registered commands deduped |
 | `skills/story-setup/references/templates/上下文.md.tmpl` | `{书名}/追踪/上下文.md` | user state | create only if absent | never overwrite existing writing context |
+| `skills/story-setup/references/templates/质检进度.md.tmpl` | `{书名}/追踪/质检进度.md` | user state | create only if absent | never overwrite existing progress table |
 | generated sentinel | `.story-deployed` | story-setup managed | replace | contains `agents_version`, `setup_skill_version`, `target_cli`, `resolver_strategy`, `references_dir` |
 | `skills/story-setup/references/opencode/AGENTS.md.tmpl` | `AGENTS.md` | user+managed | marker/section merge | contains story skill routing sections | target_cli 含 opencode |
 | `skills/story-setup/references/opencode/agents/` | `.opencode/agents/` | story-setup managed | replace | 7 agent files exist（replace 前按 2.4.4 Step 0 缓存现有 `model:`，避免覆盖用户已配模型） | target_cli 含 opencode |
@@ -237,6 +238,7 @@ model: provider/model-id
 - 读取 `skills/story-setup/references/templates/上下文.md.tmpl`
 - 仅当已识别为长篇书目且 `{书名}/追踪/` 已存在时，创建缺失的 `{书名}/追踪/上下文.md`
 - 如果目标文件已存在，不覆盖；短篇项目不得因此创建 `追踪/` 目录
+- 同一条件下，同样创建缺失的 `{书名}/追踪/质检进度.md`（读取 `skills/story-setup/references/templates/质检进度.md.tmpl`）；已存在则不覆盖。这张表是 Phase 5 硬性必须项（consistency-checker、去AI味独立审查）的可机械核对记录，不能因为项目已在写而缺失
 
 ### 2.6 合并 Hooks 注册到 settings.local.json
 
@@ -427,6 +429,7 @@ hooks 注册合并按 command 字段去重：
 | references/agent-references/ | Agent 模板自带的参考资料副本；部署到 `.claude/skills/story-setup/references/agent-references/`，避免跨 skill references |
 | references/templates/settings-hooks.json | hooks 注册 JSON 片段 |
 | references/templates/上下文.md.tmpl | 写作上下文模板 |
+| references/templates/质检进度.md.tmpl | 逐章 Phase 5 质检子项完成状态表，机械可查 |
 | references/codex/AGENTS.md.tmpl | Codex 项目根 AGENTS.md 模板 |
 | references/codex/agents/ | 7 个 Codex custom agent TOML 模板 |
 | references/codex/hooks/hooks.json | Codex hooks 注册 JSON 模板（部署到 `.codex/hooks.json`） |

@@ -57,10 +57,29 @@ for BOOK_DIR in "${BOOK_DIRS[@]}"; do
       # 含全角空格 U+3000：LC_ALL=C 下 [[:space:]] 只认 ASCII 空白，单元格用全角空格补白时
       # 会留在 status 里被误判为异常；用交替补上全角空格（不能进字符组，否则触发跨区域 bug）。
       function trim(s) { gsub(/^([[:space:]]|　)+|([[:space:]]|　)+$/, "", s); return s }
-      /^\|/ && $0 !~ /^\|[-[:space:]|]+$/ {
-        status=trim($6)
+      # 列号说明：不同项目的伏笔表列数/列序并不一致——协议模板
+      # 「# | 伏笔内容 | 埋设章节 | 预计回收章节 | 状态{...} | 重要度{...}」状态在倒数第二列，
+      # 但实际项目常见「# | 伏笔内容 | 埋设章 | 回收章 | 真实答案 | 状态」状态在最后一列，
+      # 也可能只有「ID | 名称 | 埋下 | 回收 | 状态 | 备注」这类更简的自定义列序。硬编码任一
+      # 固定列号在其他布局下必错（历史 bug：曾写死 $6，后来发现协议模板测试用例列序又不同，
+      # 说明列号本身就不该假设固定），改为运行时从每张表的表头行动态定位"状态"列。
+      # 一个文件可能含多张伏笔子表（如按 A/B/C/D 分类），分隔线行标志上一行是表头，
+      # 每遇到一次分隔线就重新定位一次状态列，不假设全文件只有一张表或列序统一。
+      $0 ~ /^\|[-[:space:]|]+$/ {
+        status_col = 0
+        for (i = 1; i <= prev_nf; i++) {
+          if (trim(prev[i]) ~ /^状态/) { status_col = i; break }
+        }
+        next
+      }
+      /^\|/ && status_col > 0 {
+        status = trim($(status_col))
         if (status == "" || status == "状态" || status ~ /^状态\{/) next
         if (status == "已过期" || (status != "未埋" && status != "已埋" && status != "已回收")) print
+      }
+      /^\|/ {
+        prev_nf = NF
+        for (i = 1; i <= NF; i++) prev[i] = $i
       }
     ' "$BOOK_DIR/追踪/伏笔.md" 2>/dev/null || true)
     if [ -n "$ABNORMAL_FORESHADOW" ]; then

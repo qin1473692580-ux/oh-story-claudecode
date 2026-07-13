@@ -20,10 +20,12 @@ Detect high-risk AI-flavor prose patterns that need human rewrite:
   - 系统公告公文腔过密 (方括号系统/规则行里硬规则词聚集)
   - 过度精炼短段 (长文本里短叙述段过密且自然连接偏少)
   - 低连接密度 (引号外叙述功能词/白话连接偏少且中长句不足，像提纲/电报体)
+  - 对话密度统计 (info，独立成行对话段占比，非问题项，不影响退出码，仅供节奏判断参考)
 
 Each finding carries severity: blocking by default for generation/deslop cleanup (not-is-comparison / em-dash). This is a local style/readability gate, not an AIGC detector score; functional human text can be marked for review instead of hard-edited for a detector.
-或 advisory (period-stutter / long-paragraph / micro-action-tic / abstract-summary-tic / cliche-density-tic / metaphor-density-tic / reasoning-chain-tic / system-notice-formality-tic / overcompressed-prose-tic / low-connective-density-tic，是提示，justified 的长推理/氛围段可保留)。
---fail-on=blocking 只在出现 blocking finding 时退出 1；默认 --fail-on=all 有任何 finding 即退出 1。
+或 advisory (period-stutter / long-paragraph / micro-action-tic / abstract-summary-tic / cliche-density-tic / metaphor-density-tic / reasoning-chain-tic / system-notice-formality-tic / overcompressed-prose-tic / low-connective-density-tic，是提示，justified 的长推理/氛围段可保留)，
+或 info (dialogue-density-stat，确定性统计输出，不是问题判定，两种 --fail-on 模式都不计入退出码)。
+--fail-on=blocking 只在出现 blocking finding 时退出 1；默认 --fail-on=all 有任何 blocking/advisory finding 即退出 1（info 不计入）。
 
 The script reports findings only. It never rewrites text, because the safe fix is
 contextual: usually delete the negative setup, write the positive term directly,
@@ -133,6 +135,11 @@ const LOW_CONNECTIVE_PLAIN_PER_KILO = 65;
 const LOW_CONNECTIVE_LONG_SENTENCE_CHARS = 30;
 const LOW_CONNECTIVE_LONG_SENTENCE_RATIO = 0.08;
 
+// 对话密度统计（info，非问题判定）：独立成行、以成对引号开头的段落占叙述段总数的比例。
+// 对标参考区间供节奏判断参考，不同场景类型密度上限天然不同，不作为硬门槛。
+const DIALOGUE_DENSITY_REFERENCE_LOW = 40;
+const DIALOGUE_DENSITY_REFERENCE_HIGH = 55;
+
 // either-or「不是A就是B / 不是A也是B」里紧贴的「是」是连词的一部分，不是肯定项系动词。
 // 含「不」以沿用「不是A，也不是B」第二个否定段不算翻转的旧排除。
 const COMPACT_EITHER_OR_PREV = new Set(['不', '就', '也']);
@@ -204,9 +211,12 @@ if (options.json) {
 }
 
 if (failed) process.exit(2);
-// --fail-on=blocking 只在出现 blocking finding 时退出 1（advisory 仅报告）；默认 all 沿用「有任何 finding 即 1」。
+// --fail-on=blocking 只在出现 blocking finding 时退出 1（advisory 仅报告）；默认 all 沿用
+// 「有任何 blocking/advisory finding 即 1」。info 级别（如 dialogue-density-stat）是确定性
+// 统计输出，不是问题判定，两种模式都不计入退出码，否则每次写作都会因为纯统计信息被拦。
 const hasBlocking = allFindings.some((f) => f.severity === 'blocking');
-if (options.failOn === 'blocking' ? hasBlocking : allFindings.length > 0) process.exit(1);
+const hasActionable = allFindings.some((f) => f.severity === 'blocking' || f.severity === 'advisory');
+if (options.failOn === 'blocking' ? hasBlocking : hasActionable) process.exit(1);
 
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -311,7 +321,41 @@ function scanProsePatterns(proseLines) {
   findings.push(...findNoticeFormalityTic(proseLines));
   findings.push(...findOvercompressedProseTic(proseLines));
   findings.push(...findLowConnectiveDensityTic(proseLines));
+  findings.push(...computeDialogueDensity(proseLines));
   return findings;
+}
+
+// 对话密度统计：独立成行、以成对引号开头的段落占叙述段总数的比例。这是 info 级别的
+// 确定性统计，不是问题判定——不同场景类型（独角戏 vs 多人对手戏）密度上限天然不同，
+// 不作为唯一门槛，也不计入退出码。供写作时快速核对节奏基线，替代手写脚本现算。
+function computeDialogueDensity(proseLines) {
+  let narrativeParas = 0;
+  let dialogueParas = 0;
+
+  for (const { text } of proseLines) {
+    const trimmed = text.trim();
+    if (!trimmed || isDivider(trimmed) || isStructural(trimmed) || /^【[^】]+】$/.test(trimmed)) continue;
+    narrativeParas += 1;
+    if (isDialogueParagraph(trimmed)) dialogueParas += 1;
+  }
+
+  if (narrativeParas === 0) return [];
+  const ratio = (dialogueParas / narrativeParas) * 100;
+
+  return [{
+    line: 1,
+    column: 1,
+    type: 'dialogue-density-stat',
+    severity: 'info',
+    message: `对话密度统计：独立成行对话/字条段 ${dialogueParas}/${narrativeParas} 段（${ratio.toFixed(1)}%）；对标参考区间 ${DIALOGUE_DENSITY_REFERENCE_LOW}-${DIALOGUE_DENSITY_REFERENCE_HIGH}%，独角戏/单向命令类场景天然更低，不是硬门槛，仅供节奏判断参考。`,
+    excerpt: `${dialogueParas}/${narrativeParas} (${ratio.toFixed(1)}%)`,
+  }];
+}
+
+// 独立成行对话/字条段：整段trim后以成对引号开头（「/『/【/"/'等），是本 skill 对
+// "对话独立成行" 格式规则的直接呼应，不用复杂 NLP 判断，取的是与写作规则同一套判定口径。
+function isDialogueParagraph(trimmed) {
+  return QUOTE_PAIRS.some(([open]) => trimmed.startsWith(open));
 }
 
 // 微动作复读：统计引号外叙述里「了X量词」轻量补语的密度。次数与每千字密度双门槛，
