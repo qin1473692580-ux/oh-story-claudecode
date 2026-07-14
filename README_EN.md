@@ -374,6 +374,7 @@ Contributions are welcome — new skills, knowledge base additions, market data 
 
 - **Telegram**: <https://t.me/ohstoryclaudecode> — chat, troubleshooting, and feature discussion.
 - **GitHub Discussions**: [ask questions, get help, share workflows](https://github.com/worldwonderer/oh-story-claudecode/discussions).
+- **WeChat Official Account** (Chinese): search "AI马内" on WeChat for build notes and updates on this fork.
 
 ## Acknowledgments
 
