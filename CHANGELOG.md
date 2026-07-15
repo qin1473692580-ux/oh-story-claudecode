@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.6.22
+
+> 新增错别字校验脚本，插入 Phase 5 质检流程最前置的位置（先于风格/一致性检查）
+
+### 新增
+
+- **`check-typos.js`（长篇写作 Phase 5 新增第一步）**：新增独立的中文错别字/形近字/音近字校验脚本，收录高置信度的固定搭配误写词典（如"迫不急待"→"迫不及待"、"世外桃园"→"世外桃源"），不含依赖词性判断的虚词（的/地/得等），避免高误报率。所有命中均为 advisory，脚本从不自动改写，只报告疑似错字和常见正确写法，交由人工/agent 确认是否为项目里有意为之的风格化用词后再决定要不要改。定位为本批正文写完落盘后的第一个检查步骤，先于 `check-ai-patterns.js` / `check-degeneration.js` / `normalize-punctuation.js` 运行——错字不管文风如何都是错的，不需要等风格讨论完才发现。`story-long-write` SKILL.md Phase 5 与 `workflow-daily.md` Step 3 同步接入；`质检进度.md.tmpl` 新增对应表格列。
+
+### 发布准备
+
+- 版本号升级到 `0.6.22`（`.claude-plugin/marketplace.json` + `skills/story/VERSION`）。本版无 agents/hooks 结构变更，未 bump `agents_version`；已部署项目下次写作时直接使用新脚本即可，`质检进度.md` 现有行不受影响，新增章节起沿用新表格列。
+
 ## v0.6.21
 
 > 短篇写作参考栈瘦身：删掉长篇继承残留，建立短篇专属 format/craft/deslop/题材包体系（#206）
