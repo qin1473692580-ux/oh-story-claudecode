@@ -45,6 +45,13 @@ ANALYST_DIVERGENT_NAMES="character-basics.md character-design-methods.md charact
 # must still stay byte-identical. Stricter than a wholesale ignore.
 GENRE_STYLE_DIVERGENT_NAMES="双男主.md"
 
+# Longform-divergent (basename): story-long-write's copy carries a long-form-only
+# section (长篇循环情绪引擎) that references reader-contract-and-progression.md, which
+# exists only under story-long-write; syncing it to the short-write / agent-references
+# copies would create a dangling reference. Drop the story-long-write copy from the
+# comparison; the short-write and agent-references copies must still stay byte-identical.
+LONGFORM_DIVERGENT_NAMES="emotional-methods.md"
+
 mismatches=0
 checked=0
 
@@ -131,6 +138,21 @@ for base in $dup_names; do
       for p in ${paths[@]+"${paths[@]}"}; do
         case "$p" in
           */genre-styles/*) ;;
+          *) filtered+=("$p") ;;
+        esac
+      done
+      paths=(${filtered[@]+"${filtered[@]}"})
+      ;;
+  esac
+
+  # Longform-divergent basenames: drop the story-long-write copy (intentional
+  # long-form-only fork); the remaining copies must still be byte-identical.
+  case " $LONGFORM_DIVERGENT_NAMES " in
+    *" $base "*)
+      filtered=()
+      for p in ${paths[@]+"${paths[@]}"}; do
+        case "$p" in
+          */story-long-write/*) ;;
           *) filtered+=("$p") ;;
         esac
       done
