@@ -30,6 +30,8 @@ Professional authors follow a three-step method:
 
 Built around four pillars: reverse-engineering hits · plot modularization · layered state management · human-AI collaboration.
 
+> Starting in v0.6.24: second-round methodology validation against real hit-story corpora (via the TikHub Zhihu API) — the `story-short-write` execution rule "one reversal per story" is rewritten as "one spine-level reversal, high-frequency minor flips as pacing fuel" (disambiguation), and the 悬疑脑洞型 pack gains a five-step rule-horror authoring method plus the true-rules doctrine.
+>
 > Starting in v0.6.23: `story-short-write` adds two genre-style packs — `现实共鸣型` (family-of-origin exploitation / workplace gaslighting counterattack / bride-price traps) and `悬疑脑洞型` (death games / rule-horror), growing the core genre set from 4 to 6. Both packs disclose their source evidence and confidence level, and explicitly distinguish their emotional register (clear-eyed retaliation / cold deductive dread) from the sob-and-scorch-earth tone of the 追妻火葬场 pack.
 >
 > Starting in v0.6.22: `story-long-write` Phase 5 adds a `check-typos.js` typo checker as the first check right after a chapter is written and saved (ahead of the AI-tone/degeneration/punctuation scripts), covering a curated dictionary of high-confidence common Chinese typos; every hit is advisory and the script never rewrites the file. `质检进度.md` template gains a matching column.
