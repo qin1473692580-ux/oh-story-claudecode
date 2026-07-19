@@ -6,7 +6,7 @@
 
 A web novel writing skill pack with built-in adapters for Claude Code, OpenCode, ZCode, OpenClaw, Codex CLI, Reasonix, and workbuddy. Web AI / agent environments that can read project files can use the generic skills path. Covers the full pipeline for long-form and short-form Chinese web novels: trend scanning, deconstruction, writing, AI tone removal, and cover generation.
 
-> This repo started by referencing [worldwonderer/oh-story-claudecode](https://github.com/worldwonderer/oh-story-claudecode) (MIT licensed) as its initial blueprint, and has since been independently developed, upgraded and maintained by **星河上人** — every change is distilled from real writing practice (an 80k-character long-form novel plus multiple published-ready 番茄 short stories, end to end), feeding lessons learned back into the tool itself instead of remembering them by hand. Upstream updates are absorbed selectively, with this repo's field-tested behavior as the source of truth.
+> This repo started by referencing [worldwonderer/oh-story-claudecode](https://github.com/worldwonderer/oh-story-claudecode) (MIT licensed) as its initial blueprint, and has since been independently developed, upgraded and maintained by **星河上人** — every change is distilled from real writing practice — the long-form novel [财阀除名那晚，古井给我递了药方](https://fanqienovel.com/page/7661645008545516606) (serializing on 番茄小说, by 星河上人) plus multiple 番茄 short stories, end to end, feeding lessons learned back into the tool itself instead of remembering them by hand. Upstream updates are absorbed selectively, with this repo's field-tested behavior as the source of truth.
 
 ### Independently developed upgrades (distilled from real writing practice)
 

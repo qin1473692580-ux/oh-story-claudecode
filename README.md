@@ -4,7 +4,7 @@
 
 网文写作 skill 包，覆盖长篇与短篇网络小说的扫榜、拆文、写作、去AI味、封面图全流程。内置适配 Claude Code、OpenCode、ZCode、OpenClaw、Codex CLI、Reasonix、workbuddy；能读取项目文件的 Web AI / Agent 环境也可按通用 skills 路径使用。
 
-> 本仓库最初参考 [worldwonderer/oh-story-claudecode](https://github.com/worldwonderer/oh-story-claudecode)（MIT 协议）的方案起步，此后由 **星河上人** 独立开发、升级和维护——每一项改动都源自真实写作实战（一部 8 万字长篇 + 多篇番茄短故事全流程落地）的复盘：把实战中踩过的坑改回工具本身，而不是每次靠人工记住。上游后续更新按需选择性吸收，以本仓库的实战验证为准。
+> 本仓库最初参考 [worldwonderer/oh-story-claudecode](https://github.com/worldwonderer/oh-story-claudecode)（MIT 协议）的方案起步，此后由 **星河上人** 独立开发、升级和维护——每一项改动都源自真实写作实战的复盘——长篇《[财阀除名那晚，古井给我递了药方](https://fanqienovel.com/page/7661645008545516606)》（番茄小说连载中，星河上人 著）与多篇番茄短故事全流程落地：把实战中踩过的坑改回工具本身，而不是每次靠人工记住。上游后续更新按需选择性吸收，以本仓库的实战验证为准。
 
 ### 自研升级清单（按实战复盘沉淀）
 
