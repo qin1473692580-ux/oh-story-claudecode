@@ -2,14 +2,17 @@
 
 **English** | [中文](README.md)
 
-# oh-story-claudecode (personal fork)
+# oh-story-claudecode (independently developed & upgraded by 星河上人)
 
 A web novel writing skill pack with built-in adapters for Claude Code, OpenCode, ZCode, OpenClaw, Codex CLI, Reasonix, and workbuddy. Web AI / agent environments that can read project files can use the generic skills path. Covers the full pipeline for long-form and short-form Chinese web novels: trend scanning, deconstruction, writing, AI tone removal, and cover generation.
 
-> This repo is a fork of [worldwonderer/oh-story-claudecode](https://github.com/worldwonderer/oh-story-claudecode) (MIT licensed), grown out of a real 9-chapter / ~20k-character long-form writing retrospective — feeding lessons learned back into the tool itself instead of just remembering them by hand each time.
+> This repo started by referencing [worldwonderer/oh-story-claudecode](https://github.com/worldwonderer/oh-story-claudecode) (MIT licensed) as its initial blueprint, and has since been independently developed, upgraded and maintained by **星河上人** — every change is distilled from real writing practice (an 80k-character long-form novel plus multiple published-ready 番茄 short stories, end to end), feeding lessons learned back into the tool itself instead of remembering them by hand. Upstream updates are absorbed selectively, with this repo's field-tested behavior as the source of truth.
 
-### Changes vs. upstream
+### Independently developed upgrades (distilled from real writing practice)
 
+- **Typo pre-gate**: new `check-typos.js` runs as the very first check after each chapter is saved (ahead of AI-tone/degeneration/punctuation scripts) — born from a real miss caught by a reader; curated high-confidence dictionary, advisory-only, never rewrites.
+- **Field-validated genre packs**: new `现实共鸣型` (family-of-origin exploitation / workplace-gaslighting counterattack / bride-price traps) and `悬疑脑洞型` (death games / rule-horror, with a five-step authoring method and the true-rules doctrine) — coverage gaps identified by cross-checking the real 番茄 writer-dashboard hot-story board against two independent hit-story corpora, then used in actual finished stories.
+- **Reversal rule disambiguated**: "one reversal per story" rewritten as "one spine-level reversal, high-frequency minor flips as pacing fuel", calibrated against real hit-story corpora (~one minor flip per 800-1500 chars).
 - **Phase 5 QA steps are now mandatory**: the consistency-checker and independent AI-tone review used to be worded as "spawn if deployed", which let them get silently skipped across several chapters in a row. Now hard-required.
 - **Per-chapter QA progress table**: new `追踪/质检进度.md` makes it mechanically checkable whether each QA sub-step actually ran, instead of scrolling through prose logs.
 - **Dynamic foreshadow status-column detection**: `detect-story-gaps.sh` no longer hardcodes a column index — it locates the "status" column from the header row at runtime, fixing false positives across three different real-world table layouts (protocol template, an actual project, and the test fixture).
