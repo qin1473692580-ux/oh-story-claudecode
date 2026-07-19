@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "网络小说创作工具箱 — 扫榜、拆文、写作全流程 Claude Code skill，覆盖长篇与短篇网文",
-    "version": "0.6.24"
+    "version": "0.7.0"
   },
   "plugins": [
     {
@@ -43,7 +43,7 @@
       "description": "长篇网文写作。从大纲到正文，辅助长篇网络小说的创作，包括世界观、人物、情节线管理。",
       "source": "./",
       "strict": false,
-      "version": "1.1.0",
+      "version": "1.0.0",
       "category": "novel-writing",
       "keywords": ["long-novel", "writing", "outline", "chapter", "worldbuilding", "chinese"],
       "skills": ["./skills/story-long-write"]
@@ -73,7 +73,7 @@
       "description": "短篇网文写作。辅助短篇小说创作，从构思到成稿，聚焦情绪拉扯与节奏把控。",
       "source": "./",
       "strict": false,
-      "version": "1.1.0",
+      "version": "1.0.0",
       "category": "novel-writing",
       "keywords": ["short-novel", "writing", "emotion", "pacing", "chinese"],
       "skills": ["./skills/story-short-write"]
@@ -103,7 +103,7 @@
       "description": "网文写作环境部署。一键部署 hooks、rules、agents、CLAUDE.md 到写作项目，提供会话恢复、一致性检查、提交验证等自动化基础设施。",
       "source": "./",
       "strict": false,
-      "version": "1.1.0",
+      "version": "1.0.0",
       "category": "novel-infra",
       "keywords": ["setup", "deploy", "hooks", "agents", "初始化", "部署", "基础设施", "chinese"],
       "skills": ["./skills/story-setup"]

@@ -11,11 +11,20 @@ on:
       - "scripts/sync-opencode.py"
       - ".github/workflows/sync-opencode.yml"
 
+permissions:
+  contents: read
+
 jobs:
   check-sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
 
       - name: Setup Python
         uses: actions/setup-python@v5

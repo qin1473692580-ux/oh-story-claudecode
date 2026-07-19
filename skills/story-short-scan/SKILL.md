@@ -41,7 +41,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 ---
 
-### Phase 1.5：确定数据来源
+### Phase 2：确定数据来源
 
 **扫榜需要真实数据支撑。** 根据当前环境选择数据来源：
 
@@ -53,7 +53,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 #### browser-cdp 采集模式
 
-使用 `/browser-cdp` 启动 Chrome，直接抓取平台页面的结构化数据。
+使用 `/browser-cdp` 启动 Chrome，直接抓取平台页面的结构化数据。适用于需要登录才能看到的数据（知乎个人中心、番茄书架等）。
 
 **点众采集目标**：
 
@@ -68,7 +68,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 |------|-----|----------|
 | 书库列表 | manage.zhangwenpindu.cn/books/booklist | 书名·作者·字数·分类·类型·价格·创建/更新时间·标签（详情模式） |
 
-> **黑岩需要登录！** 必须先在 Chrome 中手动登录 `manage.zhangwenpindu.cn`，脚本才能从 Cookie 中提取 Bearer token 调用后端 API。未登录会报错提示。**黑岩采集失败时标记为 SKIP，继续其他平台采集，不中断整个 Phase 1。**
+> **黑岩需要登录！** 必须先在 Chrome 中手动登录 `manage.zhangwenpindu.cn`，脚本才能从 Cookie 中提取 Bearer token 调用后端 API。未登录会报错提示。**黑岩采集失败时标记为 SKIP，继续其他平台采集，不中断本轮数据采集。**
 
 - 黑岩专用：`--pages N`（每页 20 条）、`--detail`（逐本详情，含标签/简介，速度较慢）、`--channel male/female`
 - 点众专用：`--channel male/female/all`
@@ -84,15 +84,9 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 - 加载 `references/real-market-data.md`（跨平台写作差异对照）
 - 明确标注：「以下分析基于历史趋势数据；未完成实时榜单校验前只能作为候选假设。」并列出需要复扫的平台页面。
 
-**浏览器操控（高级模式）：**
-- 如果可用 agent-browser CLI，通过 CDP 连接 Chrome 获取平台数据
-- 示例：`agent-browser --cdp 9222 open "https://www.ishugui.com/browse"`
-- 可复用用户已登录的 Chrome session，获取完整榜单数据
-- 适用于需要登录才能看到的数据（知乎个人中心、番茄书架等）
-
 ---
 
-### Phase 2：数据分析
+### Phase 3：数据分析
 
 #### 知乎盐言故事分析维度
 
@@ -118,7 +112,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 ---
 
-### Phase 3：输出扫榜报告
+### Phase 4：输出扫榜报告
 
 ```
 # 短篇网文扫榜报告：{平台名称}
@@ -160,7 +154,7 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 ---
 
-### Phase 4：选题匹配
+### Phase 5：选题匹配
 
 根据扫榜结果，结合项目条件输出选题匹配：
 

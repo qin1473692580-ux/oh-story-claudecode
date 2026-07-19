@@ -1,10 +1,10 @@
-<!-- Last synced with README.md: 2026-06-29 -->
+<!-- Last synced with README.md: 2026-07-11 -->
 
 **English** | [中文](README.md)
 
 # oh-story-claudecode (personal fork)
 
-A web novel writing skill pack with built-in adapters for Claude Code, OpenCode, OpenClaw, Codex CLI, and workbuddy. Web AI / agent environments that can read project files can use the generic skills path. Covers the full pipeline for long-form and short-form Chinese web novels: trend scanning, deconstruction, writing, AI tone removal, and cover generation.
+A web novel writing skill pack with built-in adapters for Claude Code, OpenCode, ZCode, OpenClaw, Codex CLI, Reasonix, and workbuddy. Web AI / agent environments that can read project files can use the generic skills path. Covers the full pipeline for long-form and short-form Chinese web novels: trend scanning, deconstruction, writing, AI tone removal, and cover generation.
 
 > This repo is a fork of [worldwonderer/oh-story-claudecode](https://github.com/worldwonderer/oh-story-claudecode) (MIT licensed), grown out of a real 9-chapter / ~20k-character long-form writing retrospective — feeding lessons learned back into the tool itself instead of just remembering them by hand each time.
 
@@ -30,19 +30,18 @@ Professional authors follow a three-step method:
 
 Built around four pillars: reverse-engineering hits · plot modularization · layered state management · human-AI collaboration.
 
-> Starting in v0.6.24: second-round methodology validation against real hit-story corpora (via the TikHub Zhihu API) — the `story-short-write` execution rule "one reversal per story" is rewritten as "one spine-level reversal, high-frequency minor flips as pacing fuel" (disambiguation), and the 悬疑脑洞型 pack gains a five-step rule-horror authoring method plus the true-rules doctrine.
+> Starting in v0.7.0: two more runtimes — native ZCode 3.3.4 (install the repo as a marketplace/plugin, `story-setup target_cli=zcode`) and Reasonix Phase 1 (skills + native plugin manifest); hook cores unified onto a shared node core with a six-runtime parity lock; long-form unifies the five old names (plot-strand / loop-card / …) into "剧情单元" (plot unit) and feeds decomposition output into volume/chapter outlines; the anti-AI-tone gate is now mechanized — the post-write prose net auto-scans deterministic toxic phrasings, and a "toxic-phrase debt gate" blocks the next chapter until the previous one is cleared (stateless, node-missing fails open, opt out explicitly with `<!-- 去味:跳过 -->`). Deployed projects should rerun `/story-setup` and start a new session.
 >
-> Starting in v0.6.23: `story-short-write` adds two genre-style packs — `现实共鸣型` (family-of-origin exploitation / workplace gaslighting counterattack / bride-price traps) and `悬疑脑洞型` (death games / rule-horror), growing the core genre set from 4 to 6. Both packs disclose their source evidence and confidence level, and explicitly distinguish their emotional register (clear-eyed retaliation / cold deductive dread) from the sob-and-scorch-earth tone of the 追妻火葬场 pack.
+> Starting in v0.6.22: long-form prose gains per-genre "prose prompt cards" — 32 番茄-genre voice cards recalled into the writer at draft time (card text never leaks into prose), plus outline-boundary and per-chapter formula gates against padding; short-form adds a submission layer `submission-craft` (Zhihu Yanxuan / mini-program / Fanqie platform tones, lead-in polish, paywall breakpoint design); suite-wide skill docs deduplicated by ~33KB; story-setup adds generic Web AI deployment. Deployed projects should rerun `/story-setup` and start a new session.
 >
-> Starting in v0.6.22: `story-long-write` Phase 5 adds a `check-typos.js` typo checker as the first check right after a chapter is written and saved (ahead of the AI-tone/degeneration/punctuation scripts), covering a curated dictionary of high-confidence common Chinese typos; every hit is advisory and the script never rewrites the file. `质检进度.md` template gains a matching column.
+> Starting in v0.6.24-fork: second-round methodology validation against real hit-story corpora (via the TikHub Zhihu API) — the `story-short-write` execution rule "one reversal per story" is rewritten as "one spine-level reversal, high-frequency minor flips as pacing fuel" (disambiguation), and the 悬疑脑洞型 pack gains a five-step rule-horror authoring method plus the true-rules doctrine.
 >
+> Starting in v0.6.23-fork: `story-short-write` adds two genre-style packs — `现实共鸣型` (family-of-origin exploitation / workplace gaslighting counterattack / bride-price traps) and `悬疑脑洞型` (death games / rule-horror), growing the core genre set from 4 to 6. Both packs disclose their source evidence and confidence level, and explicitly distinguish their emotional register (clear-eyed retaliation / cold deductive dread) from the sob-and-scorch-earth tone of the 追妻火葬场 pack.
+>
+> Starting in v0.6.22-fork: `story-long-write` Phase 5 adds a `check-typos.js` typo checker as the first check right after a chapter is written and saved (ahead of the AI-tone/degeneration/punctuation scripts), covering a curated dictionary of high-confidence common Chinese typos; every hit is advisory and the script never rewrites the file. `质检进度.md` template gains a matching column.>
 > Starting in v0.6.21: short-form writing reference cleanup — `story-short-write` drops stale long-form inherited references and now uses `short-format` / `short-craft` / `short-deslop` plus four genre packs (wife-chasing crematorium, revenge face-slap, CEO/wealthy family, domestic/palace intrigue) for short-story format, direct emotion, pacing density, and AI-tone cleanup; existing deployed projects should rerun `/story-setup` and start a new session to pick up the updated narrative-writer short-story exception.
 >
-> Starting in v0.6.20: long-form outline reinforcement — benchmark rhythm transfer (reflow a hit book's deconstructed pacing into your volume outline by normalized key points, with a chapter-summary fallback when the rhythm file is absent) and chapter positioning & tension-pacing (fixing "every chapter reads like a standalone short story": chapters are typed by their position in the unit-arc, so relationship/breathing/transition chapters no longer have to manufacture a hook and a payoff while still keeping read-through pull, with a "no emotional-motif clustering" guardrail; positioning is optional and non-quota).
->
-> Starting in v0.6.19: Codex CLI support (`.agents/skills` repo discovery plus `$story-setup` deployment of `.codex/agents/*.toml` and `.codex/hooks.json`) and OpenClaw compatibility; custom style `设定/文风.md` takes priority over benchmarks; a deterministic post-write backstop (truncation / repetition / engineering-term / sentence-stutter detection); OpenCode subagents auto-assigned cost-tiered models to cut spend; and chapter outlines budgeted by word count to end the under-length rewrite loop.
->
-> Starting in v0.6.18, the toolkit fully supports the OpenCode CLI (auto-discovered agents, command and hook adapters) and ships a built-in update reminder; serialized writing adds per-chapter dialogue-voice and style-drift self-checks, and cover generation crop-fills to each platform's exact size (e.g. 番茄 600×800).
+> For earlier versions, see [CHANGELOG.md](CHANGELOG.md).
 
 ## Pipeline Overview
 
@@ -101,7 +100,7 @@ flowchart LR
 
 ## Installation
 
-**Option 1** Tell Claude Code / OpenCode / OpenClaw / Codex, or another Web AI / agent platform that can import a GitHub repo or skill:
+**Option 1** Tell Claude Code / OpenCode / ZCode / OpenClaw / Codex, or another Web AI / agent platform that can import a GitHub repo or skill:
 
 ```
 Install this skill https://github.com/worldwonderer/oh-story-claudecode
@@ -119,21 +118,25 @@ npx skills add worldwonderer/oh-story-claudecode -y -g
 >
 
 > **Codex users:** Use it in-place: Codex scans `$REPO_ROOT/.agents/skills` (a symlink to `skills/`) and discovers all 13 skills; invoke via `$story`, `$story-setup`, or `/skills`. On Windows, enable git `core.symlinks=true` or the symlink breaks — then use the `$story-setup` deployment below.
-> After `$story-setup` deploys into a writing project, it creates `.codex/agents/*.toml`, `.codex/hooks.json`, `.codex/hooks/story_codex_hook.py`, and `.codex/skills/story-setup/references/agent-references/`. Trust the project `.codex/` layer, review/trust hooks in `/hooks`, and open a fresh Codex session so custom agents load.
+> After `$story-setup` deploys into a writing project, it creates `.codex/agents/*.toml`, `.codex/hooks.json`, `.codex/hooks/{story_codex_hook.py,run-story-hook.sh,run-story-hook.cmd}`, and `.codex/skills/story-setup/references/agent-references/`. Trust the project `.codex/` layer, review/trust hooks in `/hooks`, and open a fresh Codex session so custom agents load.
+>
+> **ZCode users:** Add this repository as a marketplace in Plugin Management and install `oh-story`; then invoke the 13 Skills/Commands through `$story`, `$story-setup`, or the `/` panel. With `target_cli=zcode`, `$story-setup` deploys `.zcode/skills/`, `.zcode/commands/`, and `.zcode/hooks/story_zcode_hook.js`, then safely merges `.zcode/config.json` and the root `AGENTS.md`. Hooks require `node` on PATH. ZCode 3.3.4 does not execute project/plugin custom agents and has no `PreCompact` or `SessionEnd`; affected workflows report a solo/direct fallback, while `SessionStart` restores context after compaction.
 >
 > **OpenCode users:** After global install, opencode auto-discovers skills from `~/.claude/skills/`; trigger story-setup with natural language on first use (e.g., "use story-setup to deploy the web novel environment"), then **exit and re-enter with `opencode -c`** for slash commands to work. Some hook behaviors differ from Claude Code (session-start / session-end / compact, etc.) — see the OpenCode section in [CONTRIBUTING.md](CONTRIBUTING.md).
 >
 > **OpenClaw users:** Current support is skills-only. OpenClaw can discover the 13 story skills from workspace `skills/`, `.agents/skills`, `~/.agents/skills`, `~/.openclaw/skills`, or configured extra skill roots. `SKILL.md` files use OpenClaw-compatible single-line `name` / `description` plus single-line JSON `metadata.openclaw`. When `story-setup` targets OpenClaw, it copies the skills into project `skills/` and writes an OpenClaw `AGENTS.md`; agents/hooks are intentionally deferred, so outline-before-prose guards are soft skill checks rather than runtime enforcement. If new skills do not appear immediately, open a fresh OpenClaw session or wait for the skills watcher to refresh.
 >
+> **Reasonix users:** Current support is Skills + a native plugin manifest (Phase 1). Reasonix natively scans `.agents/skills` (a symlink to `skills/`) and discovers all 13 skills — verify with `reasonix doctor capabilities`; you can also `reasonix plugin install` via the root `reasonix-plugin.json`. Project-level `story-setup` deployment and hooks are later phases. If Windows symlinks are disabled, use the native plugin instead.
+>
 > **Generic Web AI / agent users:** If your platform can read a GitHub repo or project files, have the agent read `skills/*/SKILL.md` plus the relevant `references/`. For local project copies, run `story-setup` with `target_cli=generic`; it only writes a generic `AGENTS.md` and `skills/`. Without this project's hooks/custom agents, checks run as skill-level soft constraints or solo/direct fallbacks.
 
-> **Multi-agent collaboration needs setup + a fresh session**: the 7 specialist agents (story-architect, narrative-writer, consistency-checker, etc.) are written into your project's `.claude/agents/` by `/story-setup`, or into `.codex/agents/*.toml` by `$story-setup`. Claude Code and Codex register custom agents most reliably at session start; OpenClaw Phase 1 and the generic path default to skills + solo fallback. To check Claude/Codex agents: run `/story-review` in the new session — `Effective Mode: full/lean` means agents registered, `Fallback: ... -> solo` means they are unavailable.
+> **Multi-agent collaboration needs setup + a fresh session**: the 7 specialist agents (story-architect, narrative-writer, consistency-checker, etc.) are written into your project's `.claude/agents/` by `/story-setup`, or into `.codex/agents/*.toml` by `$story-setup`. Claude Code and Codex register custom agents most reliably at session start; ZCode 3.3.4, OpenClaw Phase 1, Reasonix Phase 1, and the generic path default to skills + solo fallback. To check Claude/Codex agents: run `/story-review` in the new session — `Effective Mode: full/lean` means agents registered, `Fallback: ... -> solo` means they are unavailable.
 
 ## Skills
 
 | Skill | Trigger | Description |
 |:------|:--------|:------------|
-| `story-setup` | `/story-setup` / `$story-setup` | Environment setup — built-in CLI adapters plus a generic Web AI skills path (safe merge) |
+| `story-setup` | `/story-setup` / `$story-setup` | Environment setup — Claude/OpenCode/Codex/ZCode/OpenClaw plus generic (safe merge) |
 | `story` | `/story` / `$story` | Toolbox router — routes fuzzy intents to the matching skill |
 | `story-long-write` | `/story-long-write` | Long-form writing — outline building, character design, prose output |
 | `story-long-analyze` | `/story-long-analyze` | Long-form deconstruction — Golden First 3 Chapters, payoff design, pacing analysis |
@@ -147,7 +150,7 @@ npx skills add worldwonderer/oh-story-claudecode -y -g
 | `story-cover` | `/story-cover` | Cover generation — title & genre analysis + GPT-Image-2 image generation |
 | `browser-cdp` | `/browser-cdp` | Browser control — CDP protocol for scraping with reusable login sessions |
 
-> `story-deslop` uses local prose linting: blocking applies only to deterministic style/punctuation issues, while other findings require read-through judgment.
+> `story-deslop` uses local prose linting: blocking applies only to deterministic style/punctuation issues, while other findings require read-through judgment; external detectors such as Zhuque are self-check references, not replacements for human review.
 
 Natural language also triggers: `帮我开书` ("help me start writing") → `story-long-write`, `这篇太AI了` ("this is too AI-ish") → `story-deslop`, `把我的书导进来` ("import my book") → `story-import`, `沈栀现在什么状态` ("what's Shen Zhi's current status") → `story-explorer`.
 
@@ -386,3 +389,4 @@ Contributions are welcome — new skills, knowledge base additions, market data 
 
 - [LINUX DO - The New Ideal Community](https://linux.do) — Community support
 - [FanqieRankTracker](https://github.com/wen1701/FanqieRankTracker) — Fanqie Novels font obfuscation decoding reference
+- [Zhuque AIGC Detector CLI](https://github.com/Sophomoresty/zhuque) — External retest reference used during anti-AI-writing experiments

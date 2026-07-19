@@ -20,12 +20,17 @@ Detect high-risk AI-flavor prose patterns that need human rewrite:
   - 系统公告公文腔过密 (方括号系统/规则行里硬规则词聚集)
   - 过度精炼短段 (长文本里短叙述段过密且自然连接偏少)
   - 低连接密度 (引号外叙述功能词/白话连接偏少且中长句不足，像提纲/电报体)
+  - 监控摄像头式动作清单 (同段连续摆放动作动词，缺少视角温度/情绪缓冲)
+  - 音量反差腔 (声音不高/不大…却…, 实战漏网句式)
+  - 否定排比 (没有X，没有Y…连排 / 没X…只是Y 先否定后肯定, 实战漏网句式)
+  - 反序对比 (是A，不是B — not-is 的反序变种, 实战漏网句式)
+  - 预告式总结收尾 (文末窗口 没人知道/才刚刚开始/正朝着…压了过去, 实战漏网句式)
+  - 引号强调滥用 (叙述里 1-4 字短词加引号强调，密度型)
   - 对话密度统计 (info，独立成行对话段占比，非问题项，不影响退出码，仅供节奏判断参考)
 
-Each finding carries severity: blocking by default for generation/deslop cleanup (not-is-comparison / em-dash). This is a local style/readability gate, not an AIGC detector score; functional human text can be marked for review instead of hard-edited for a detector.
-或 advisory (period-stutter / long-paragraph / micro-action-tic / abstract-summary-tic / cliche-density-tic / metaphor-density-tic / reasoning-chain-tic / system-notice-formality-tic / overcompressed-prose-tic / low-connective-density-tic，是提示，justified 的长推理/氛围段可保留)，
-或 info (dialogue-density-stat，确定性统计输出，不是问题判定，两种 --fail-on 模式都不计入退出码)。
---fail-on=blocking 只在出现 blocking finding 时退出 1；默认 --fail-on=all 有任何 blocking/advisory finding 即退出 1（info 不计入）。
+Each finding carries severity: blocking by default for generation/deslop cleanup (not-is-comparison / em-dash / voice-contrast / negation-parade / reverse-not-is / trailer-ending). This is a local style/readability gate, not an AIGC detector score; functional human text can be marked for review instead of hard-edited for a detector.
+或 advisory (period-stutter / long-paragraph / micro-action-tic / action-list-tic / abstract-summary-tic / cliche-density-tic / metaphor-density-tic / reasoning-chain-tic / system-notice-formality-tic / overcompressed-prose-tic / low-connective-density-tic / quote-emphasis-tic，是提示，justified 的长推理/氛围段可保留)。
+--fail-on=blocking 只在出现 blocking finding 时退出 1；默认 --fail-on=all 有任何 blocking/advisory finding 即退出 1（info 级 dialogue-density-stat 是确定性统计输出，不计入退出码）。
 
 The script reports findings only. It never rewrites text, because the safe fix is
 contextual: usually delete the negative setup, write the positive term directly,
@@ -50,6 +55,13 @@ const LONG_PARAGRAPH_CHARS = 200;
 const MICRO_TIC_PATTERN = /了(?:[一两三几半])?[下阵圈道声眼口气会]/g;
 const MICRO_TIC_MIN_HITS = 5;
 const MICRO_TIC_PER_KILO = 6;
+
+// 监控摄像头式动作清单：同一段连续堆叠通用动作动词（伸手/拿起/取过/挑开/放下/转身等），
+// 且用逗号/顿号串联成步骤表时，读感像无视角温度的监控记录。只做 advisory；
+// 打斗/追逐等功能性动作编排可保留或人工复核。
+const ACTION_LIST_VERB_PATTERN = /伸手|抬手|探手|拿起|拿过|取出|取过|掏出|摸出|抓起|攥住|握住|捏住|按住|推开|拉开|打开|关上|放下|递给|挑开|掀开|扯开|拧开|倒出|端起|转身|回头|抬头|低头|弯腰|俯身|走到|走向|坐下|站起|看向|看着|盯着|扫过/g;
+const ACTION_LIST_MIN_HITS = 5;
+const ACTION_LIST_MIN_SEPARATORS = 4;
 
 // 抽象总结复读：模板化段落常把角色当下经历拔成「命运/棋局/
 // 这一刻终于明白/才刚刚开始」的作者总结。单个词可能服务题材；高密度聚集才报。
@@ -135,11 +147,6 @@ const LOW_CONNECTIVE_PLAIN_PER_KILO = 65;
 const LOW_CONNECTIVE_LONG_SENTENCE_CHARS = 30;
 const LOW_CONNECTIVE_LONG_SENTENCE_RATIO = 0.08;
 
-// 对话密度统计（info，非问题判定）：独立成行、以成对引号开头的段落占叙述段总数的比例。
-// 对标参考区间供节奏判断参考，不同场景类型密度上限天然不同，不作为硬门槛。
-const DIALOGUE_DENSITY_REFERENCE_LOW = 40;
-const DIALOGUE_DENSITY_REFERENCE_HIGH = 55;
-
 // either-or「不是A就是B / 不是A也是B」里紧贴的「是」是连词的一部分，不是肯定项系动词。
 // 含「不」以沿用「不是A，也不是B」第二个否定段不算翻转的旧排除。
 const COMPACT_EITHER_OR_PREV = new Set(['不', '就', '也']);
@@ -151,8 +158,60 @@ const AFFIRMATION_TAG_PARTICLES = new Set(['的', '啊', '呀', '呢']);
 const AFFIRMATION_TAG_BOUNDARY = new Set(['', '，', ',', '。', '.', '！', '!', '？', '?', '、', '；', ';', '：', ':', '\n', '\r', '\t', ' ']);
 
 // 成对引号（台词/系统播报/弹幕）的字符对，stripQuoted 与 quotedRanges 共用一份来源。
+const DIALOGUE_DENSITY_REFERENCE_LOW = 40;
+const DIALOGUE_DENSITY_REFERENCE_HIGH = 55;
 const QUOTE_PAIRS = [['「', '」'], ['『', '』'], ['【', '】'], ['“', '”'], ['‘', '’'], ['"', '"'], ["'", "'"]];
 const QUOTE_SOURCES = QUOTE_PAIRS.map(([open, close]) => `${escapeRegExp(open)}[^${escapeRegExpCharClass(close)}]*${escapeRegExp(close)}`);
+
+// ---- 实战测试漏网句式（来源：实战写作抓到的真实漏网例句；2026-07 校准）----
+// 校准基线：《万疆》真人正文 20 章（第1/10/20/…/190章）+ demo 前 20 章。
+// blocking 规则要求真人语料命中 ≈0（每 20 章 ≤1 处且人工判定确属该句式）；数据见各规则注释。
+
+// 音量反差腔（实战漏网 A）：「声音不高，第一句却稳稳压住了整个大厅。」
+// 旧网只有套词密度桶里的「声音不大，却带着」，音量词/转折词一换就漏。
+// 引号外叙述逐处 blocking；修法是删掉音量铺垫，直接写声音落进场子的具体效果。
+// 校准：《万疆》20 章 0 命中，demo 前 20 章 0 命中。
+const VOICE_CONTRAST_PATTERN = /声音(?:并)?不[大高响亮][^。！？!?\n]{0,16}[却但偏]/g;
+
+// 否定排比（实战漏网 B）：「没有伴奏，没有和声，没有提词器。」同句 ≥2 个「没有X，」连排；
+// 变体「他没炫技，没有那种…架势。他只是唱」先否定铺垫、再用「只是/只会/只有」收肯定。
+// 只收「没/没有」段，不收「不X」段——真人叙述里「不哭不闹」类太常见，收进来误报换不来收益。
+// 校准：《万疆》20 章 0 命中，demo 前 20 章 0 命中。
+const NEGATION_PARADE_PATTERNS = [
+  /(?:没有[^。！？!?\n，,]{1,12}[，,]){2}/g,
+  /没(?:有)?[^。！？!?\n，,]{1,12}[，,]\s*没(?:有)?[^。！？!?\n，,]{1,16}[，,。.][^。！？!?\n，,]{0,6}只(?:是|会|有)/g,
+];
+
+// 反序对比腔（实战漏网 C）：「是真嗓子，不是修音修出来的」——not-is-comparison 的反序变种。
+// 复用 not-is 的排除基建：引号内剥离（maskQuoted）、「是的/是啊」确认语（isAffirmationTagAt）；
+// 前字排除从 either-or 的 不/就/也 扩展到全部「X是」连词/副词合成词（还是/只是/可是/但是/
+// 于是/倒是/像是/若是/要是/正是/便是/总是/老是/更是/最是/算是/怕是/凡是/或是/即是/自是/
+// 竟是/原是/本是/仍是/许是/净是/光是/单是/尽是）；「是不是」问句起头与「不是吗/不是么/
+// 不是吧」反问尾巴单独排除。
+// 校准：《万疆》20 章 0 命中，demo 前 20 章 0 命中，按 blocking 实现。
+const REVERSE_NOT_IS_PATTERN = /是([^。！？!?\n，,]{1,12})[，,]\s*(?:而)?不是([^。！？!?\n]{1,20})/g;
+const REVERSE_NOT_IS_PREV_EXCLUDE = new Set([...COMPACT_EITHER_OR_PREV, '还', '只', '可', '但', '于', '倒', '像', '若', '要', '正', '便', '总', '老', '更', '最', '算', '怕', '凡', '或', '即', '自', '竟', '原', '本', '仍', '许', '净', '光', '单', '尽']);
+
+// 预告式总结收尾（实战漏网 D）：「没人知道，这才刚刚开头。」「一场…震惊接力，正朝着…缓缓压了过去。」
+// 章尾替读者预告下一章走向是 AI 收尾腔。只扫文末窗口（剥引号后可见字数，按行取整），
+// 正文中段的「没人知道」多为普通叙述，不误伤；引号内台词（「没人知道…」）不计。
+// 「正式拉开序幕/帷幕」是场内事件的报幕式陈述（真人语料「钟声再度响起，比赛正式拉开序幕」），
+// 不是叙述者预告，前置 lookbehind 排除。
+// 校准：《万疆》20 章排除「正式拉开序幕」2 处报幕句后 0 命中，demo 前 20 章 0 命中。
+const TRAILER_ENDING_PATTERN = /没人知道|谁也不知道|谁也没想到|殊不知|(?:这)?才刚刚开(?:始|头)|正(?:朝着|向着)[^。！？!?\n]{0,24}(?:压|涌|袭|逼)(?:了?过去|了?过来|来)|(?<!正式)拉开(?:序幕|帷幕)|即将(?:开始|来临|降临)/g;
+const TRAILER_ENDING_WINDOW_CHARS = 600;
+
+// 引号强调滥用（实战漏网 E，advisory 密度型，风格照 metaphor-density-tic）：
+// 叙述里短词加引号强调（他是被请来"把关"的）。只数叙述层 1-4 字成对引号片段；
+// 排除项：【】系统面板载体、引语动词（说|道|问|喊|答|念|叫|回|吼|嘀咕，加细 骂|写|读|唱）
+// 前 6 字/后 3 字邻接的极短台词、引号内含句读的台词、引号外无叙述的行（独立台词/
+// 弹幕流/拟声词连发）、引号套引号（台词内强调）。全文 ≥3 处报一条——单处强调是
+// 正常修辞，密度高才是模板腔。
+// 校准：demo 前 20 章 0 章过阈值；《万疆》20 章 2 章过阈值（海报标语“我在番城”系列、
+// “邀战书”等转述载体，真人也这么写），所以该规则只做 advisory，不升 blocking。
+const QUOTE_EMPHASIS_MIN_HITS = 3;
+const QUOTE_EMPHASIS_MAX_VISIBLE = 4;
+const QUOTE_EMPHASIS_SPEECH_VERB_PATTERN = /[说道问喊答念叫回吼骂写读唱嘀咕]/;
 
 const options = {
   json: false,
@@ -211,9 +270,7 @@ if (options.json) {
 }
 
 if (failed) process.exit(2);
-// --fail-on=blocking 只在出现 blocking finding 时退出 1（advisory 仅报告）；默认 all 沿用
-// 「有任何 blocking/advisory finding 即 1」。info 级别（如 dialogue-density-stat）是确定性
-// 统计输出，不是问题判定，两种模式都不计入退出码，否则每次写作都会因为纯统计信息被拦。
+// --fail-on=blocking 只在出现 blocking finding 时退出 1（advisory 仅报告）；默认 all 沿用「有任何 finding 即 1」。
 const hasBlocking = allFindings.some((f) => f.severity === 'blocking');
 const hasActionable = allFindings.some((f) => f.severity === 'blocking' || f.severity === 'advisory');
 if (options.failOn === 'blocking' ? hasBlocking : hasActionable) process.exit(1);
@@ -312,8 +369,14 @@ function scanProsePatterns(proseLines) {
     }
   }
 
+  findings.push(...findVoiceContrast(proseLines));
+  findings.push(...findNegationParade(proseLines));
+  findings.push(...findReverseNotIs(proseLines));
+  findings.push(...findTrailerEnding(proseLines));
+  findings.push(...findQuoteEmphasisTic(proseLines));
   findings.push(...findPeriodStutter(proseLines));
   findings.push(...findMicroActionTic(proseLines));
+  findings.push(...findActionListTic(proseLines));
   findings.push(...findAbstractSummaryTic(proseLines));
   findings.push(...findClicheDensityTic(proseLines));
   findings.push(...findMetaphorDensityTic(proseLines));
@@ -325,37 +388,184 @@ function scanProsePatterns(proseLines) {
   return findings;
 }
 
-// 对话密度统计：独立成行、以成对引号开头的段落占叙述段总数的比例。这是 info 级别的
-// 确定性统计，不是问题判定——不同场景类型（独角戏 vs 多人对手戏）密度上限天然不同，
-// 不作为唯一门槛，也不计入退出码。供写作时快速核对节奏基线，替代手写脚本现算。
-function computeDialogueDensity(proseLines) {
-  let narrativeParas = 0;
-  let dialogueParas = 0;
+// 音量反差腔（实战漏网 A）：引号外叙述逐处 blocking，位置与摘录取自原文
+// （maskQuoted 等长占位保偏移；命中片段不含句号，故不会落进占位区）。
+function findVoiceContrast(proseLines) {
+  const findings = [];
 
-  for (const { text } of proseLines) {
+  for (const { text, lineNo } of proseLines) {
     const trimmed = text.trim();
-    if (!trimmed || isDivider(trimmed) || isStructural(trimmed) || /^【[^】]+】$/.test(trimmed)) continue;
-    narrativeParas += 1;
-    if (isDialogueParagraph(trimmed)) dialogueParas += 1;
+    if (!trimmed || isDivider(trimmed) || isStructural(trimmed)) continue;
+    const masked = maskQuoted(text);
+    VOICE_CONTRAST_PATTERN.lastIndex = 0;
+    let match;
+    while ((match = VOICE_CONTRAST_PATTERN.exec(masked)) !== null) {
+      findings.push({
+        line: lineNo,
+        column: match.index + 1,
+        type: 'voice-contrast',
+        severity: 'blocking',
+        message: '音量反差腔：「声音不大/不高…却/但…」是 AI 高频反差模板；删掉音量铺垫，直接写声音落进场子的具体效果（谁停了手、哪排安静了）。',
+        excerpt: compact(text.slice(match.index, match.index + match[0].length)),
+      });
+    }
   }
 
-  if (narrativeParas === 0) return [];
-  const ratio = (dialogueParas / narrativeParas) * 100;
-
-  return [{
-    line: 1,
-    column: 1,
-    type: 'dialogue-density-stat',
-    severity: 'info',
-    message: `对话密度统计：独立成行对话/字条段 ${dialogueParas}/${narrativeParas} 段（${ratio.toFixed(1)}%）；对标参考区间 ${DIALOGUE_DENSITY_REFERENCE_LOW}-${DIALOGUE_DENSITY_REFERENCE_HIGH}%，独角戏/单向命令类场景天然更低，不是硬门槛，仅供节奏判断参考。`,
-    excerpt: `${dialogueParas}/${narrativeParas} (${ratio.toFixed(1)}%)`,
-  }];
+  return findings;
 }
 
-// 独立成行对话/字条段：整段trim后以成对引号开头（「/『/【/"/'等），是本 skill 对
-// "对话独立成行" 格式规则的直接呼应，不用复杂 NLP 判断，取的是与写作规则同一套判定口径。
-function isDialogueParagraph(trimmed) {
-  return QUOTE_PAIRS.some(([open]) => trimmed.startsWith(open));
+// 否定排比（实战漏网 B）：两个变体（同句「没有X，」连排 / 先否定后「只是」收肯定）
+// 可能在同一片文字上重叠命中，按区间去重只报一次。
+function findNegationParade(proseLines) {
+  const findings = [];
+
+  for (const { text, lineNo } of proseLines) {
+    const trimmed = text.trim();
+    if (!trimmed || isDivider(trimmed) || isStructural(trimmed)) continue;
+    const masked = maskQuoted(text);
+
+    const spans = [];
+    for (const pattern of NEGATION_PARADE_PATTERNS) {
+      pattern.lastIndex = 0;
+      let match;
+      while ((match = pattern.exec(masked)) !== null) {
+        spans.push([match.index, match.index + match[0].length]);
+      }
+    }
+    spans.sort((a, b) => a[0] - b[0]);
+
+    let lastEnd = -1;
+    for (const [start, end] of spans) {
+      if (start < lastEnd) {
+        lastEnd = Math.max(lastEnd, end);
+        continue;
+      }
+      lastEnd = end;
+      findings.push({
+        line: lineNo,
+        column: start + 1,
+        type: 'negation-parade',
+        severity: 'blocking',
+        message: '否定排比：「没有X，没有Y…」/「没X，没有Y，只是Z」是 AI 高频排比模板；删掉否定清单，直接写现场实际有什么，最多留一个最有信息量的否定。',
+        excerpt: compact(text.slice(start, end)),
+      });
+    }
+  }
+
+  return findings;
+}
+
+// 反序对比腔（实战漏网 C）：「是A，不是B」。排除基建复用 not-is-comparison：
+// 引号内剥离、「是的/是啊」确认语；前字合成词与反问尾巴见 REVERSE_NOT_IS_PREV_EXCLUDE 注释。
+function findReverseNotIs(proseLines) {
+  const findings = [];
+
+  for (const { text, lineNo } of proseLines) {
+    const trimmed = text.trim();
+    if (!trimmed || isDivider(trimmed) || isStructural(trimmed)) continue;
+    const masked = maskQuoted(text);
+    REVERSE_NOT_IS_PATTERN.lastIndex = 0;
+    let match;
+    while ((match = REVERSE_NOT_IS_PATTERN.exec(masked)) !== null) {
+      const start = match.index;
+      // 「就是/也是/还是/只是/可是…」里的「是」是合成词一部分，不是肯定项系动词。
+      if (REVERSE_NOT_IS_PREV_EXCLUDE.has(masked[start - 1])) continue;
+      // 「是不是…」问句起头。
+      if (masked[start + 1] === '不') continue;
+      // 「是的，…不是…」承接确认语（复用 not-is 的判定）。
+      if (isAffirmationTagAt(masked, start)) continue;
+      // 「…，不是吗/不是么/不是吧」反问尾巴。
+      if (/^[吗么吧]/.test(match[2])) continue;
+      findings.push({
+        line: lineNo,
+        column: start + 1,
+        type: 'reverse-not-is',
+        severity: 'blocking',
+        message: '反序对比腔：「是A，不是B」与「不是A，是B」同族；删掉后置否定，直接写 A 的具体表现，或用细节让读者自己对比。',
+        excerpt: compact(text.slice(start, start + match[0].length)),
+      });
+    }
+  }
+
+  return findings;
+}
+
+// 预告式总结收尾（实战漏网 D）：只扫文末窗口。从文末往回收集叙述行，
+// 直到剥引号后的可见字数达到窗口大小（按行取整，边界行整行计入）。
+function findTrailerEnding(proseLines) {
+  const windowLines = [];
+  let accumulated = 0;
+
+  for (let i = proseLines.length - 1; i >= 0 && accumulated < TRAILER_ENDING_WINDOW_CHARS; i -= 1) {
+    const { text } = proseLines[i];
+    const trimmed = text.trim();
+    if (!trimmed || isDivider(trimmed) || isStructural(trimmed)) continue;
+    windowLines.unshift(proseLines[i]);
+    accumulated += visibleLength(stripQuoted(trimmed));
+  }
+
+  const findings = [];
+  for (const { text, lineNo } of windowLines) {
+    const masked = maskQuoted(text);
+    TRAILER_ENDING_PATTERN.lastIndex = 0;
+    let match;
+    while ((match = TRAILER_ENDING_PATTERN.exec(masked)) !== null) {
+      findings.push({
+        line: lineNo,
+        column: match.index + 1,
+        type: 'trailer-ending',
+        severity: 'blocking',
+        message: '预告式总结收尾：「没人知道/才刚刚开始/正朝着…压了过去」是 AI 章尾预告腔；结尾停在具体动作、画面或一句台词上，悬念让事件自己挂住，别替读者预告下一章。',
+        excerpt: compact(text.slice(match.index, match.index + match[0].length)),
+      });
+    }
+  }
+
+  return findings;
+}
+
+// 引号强调滥用（实战漏网 E）：统计叙述层 1-4 字成对引号强调片段，全文只报一条
+// （密度型分布指纹）。台词类排除见 QUOTE_EMPHASIS_* 常量注释。
+function findQuoteEmphasisTic(proseLines) {
+  let hits = 0;
+  let firstLine = null;
+  const samples = [];
+
+  for (const { text, lineNo } of proseLines) {
+    const trimmed = text.trim();
+    if (!trimmed || isDivider(trimmed) || isStructural(trimmed)) continue;
+    // 引号外没有叙述的行（独立台词/弹幕流/拟声词连发「“叮咚~”“叮咚~”」）整行跳过：
+    // 强调滥用是叙述层指纹，没有叙述就无所谓强调。
+    if (visibleLength(stripQuoted(trimmed)) === 0) continue;
+    const ranges = quotedRanges(text);
+
+    for (const [start, end] of ranges) {
+      if (text[start] === '【') continue; // 系统面板/公告载体，不是强调引号
+      // 引号套引号：台词内部的强调属于角色语言，不算叙述层强调滥用。
+      if (ranges.some(([s2, e2]) => s2 <= start && end <= e2 && (s2 !== start || e2 !== end))) continue;
+      const inner = text.slice(start + 1, end - 1);
+      const visible = visibleLength(inner);
+      if (visible < 1 || visible > QUOTE_EMPHASIS_MAX_VISIBLE) continue;
+      if (/[。！？!?…，,；;：:]/.test(inner)) continue; // 含句读的是台词/播报，不是强调
+      const before = text.slice(Math.max(0, start - 6), start);
+      const after = text.slice(end, end + 3);
+      if (QUOTE_EMPHASIS_SPEECH_VERB_PATTERN.test(before) || QUOTE_EMPHASIS_SPEECH_VERB_PATTERN.test(after)) continue; // 引语动词邻接=极短台词
+      hits += 1;
+      if (firstLine === null) firstLine = lineNo;
+      if (samples.length < 6 && !samples.includes(inner)) samples.push(inner);
+    }
+  }
+
+  if (hits < QUOTE_EMPHASIS_MIN_HITS) return [];
+
+  return [{
+    line: firstLine,
+    column: 1,
+    type: 'quote-emphasis-tic',
+    severity: 'advisory',
+    message: `引号强调滥用：叙述里 1-4 字短词加引号强调 ${hits} 处；只留真正反讽/转述必要的一两处，其余去掉引号直接写，或换成具体动作让读者自己品。`,
+    excerpt: compact(samples.join(' ')),
+  }];
 }
 
 // 微动作复读：统计引号外叙述里「了X量词」轻量补语的密度。次数与每千字密度双门槛，
@@ -392,6 +602,39 @@ function findMicroActionTic(proseLines) {
     message: `微动作复读：「了下/了一下」式轻量补语 ${hits} 处（${perKilo.toFixed(1)}/千字）；同一反应模板高密度复现是机械指纹，合并动作 beat、换具体细节，别每个动作都补一个轻反应尾巴。`,
     excerpt: compact(samples.join(' ')),
   }];
+}
+
+function findActionListTic(proseLines) {
+  const findings = [];
+
+  for (const { text, lineNo } of proseLines) {
+    const trimmed = text.trim();
+    if (!trimmed || isDivider(trimmed) || isStructural(trimmed)) continue;
+    const narrative = stripQuoted(trimmed).trim();
+    if (!narrative) continue;
+
+    ACTION_LIST_VERB_PATTERN.lastIndex = 0;
+    const verbs = [];
+    let match;
+    while ((match = ACTION_LIST_VERB_PATTERN.exec(narrative)) !== null) {
+      verbs.push(match[0]);
+    }
+
+    if (verbs.length < ACTION_LIST_MIN_HITS) continue;
+    const separators = (narrative.match(/[，、；;]/g) || []).length;
+    if (separators < ACTION_LIST_MIN_SEPARATORS) continue;
+
+    findings.push({
+      line: lineNo,
+      column: 1,
+      type: 'action-list-tic',
+      severity: 'advisory',
+      message: `监控摄像头式动作清单：同段连续动作动词 ${verbs.length} 个、分隔符 ${separators} 个；合并琐碎步骤，只保留有情绪/情节功能的动作，必要时用角色犹豫、误判或环境反馈做缓冲。`,
+      excerpt: compact(verbs.slice(0, 8).join(' ')),
+    });
+  }
+
+  return findings;
 }
 
 // 套词密度：统计引号外叙述中的高危禁用词聚集。不是逐词替换器；只在密度高到
@@ -774,6 +1017,17 @@ function stripQuoted(text) {
   return out;
 }
 
+// 把成对引号片段（含引号）替换为等长句号占位：既豁免引号内台词/播报，又保住原文
+// 偏移量，供逐处 blocking 规则定位与截取原文摘录（stripQuoted 会移位，不适合定位）。
+// 句号占位天然截断各规则的 [^。…] 字符类，规则不会跨引号拼出假命中。
+function maskQuoted(text) {
+  let out = text;
+  for (const src of QUOTE_SOURCES) {
+    out = out.replace(new RegExp(src, 'g'), (m) => '。'.repeat(m.length));
+  }
+  return out;
+}
+
 // 返回引号内片段（含引号本身）的 [start, end) 区间，供 not-is 对比句豁免台词用。
 function quotedRanges(text) {
   const ranges = [];
@@ -1015,4 +1269,36 @@ function trimTrailingNoise(text) {
 function compact(text) {
   const normalized = text.replace(/\s+/g, ' ').trim();
   return normalized.length > 80 ? `${normalized.slice(0, 77)}...` : normalized;
+}
+
+// 对话密度统计：独立成行、以成对引号开头的段落占叙述段总数的比例。这是 info 级别的
+// 确定性统计，不是问题判定——不同场景类型（独角戏 vs 多人对手戏）密度上限天然不同，
+// 不作为唯一门槛，也不计入退出码。供写作时快速核对节奏基线，替代手写脚本现算。
+function computeDialogueDensity(proseLines) {
+  let narrativeParas = 0;
+  let dialogueParas = 0;
+
+  for (const { text } of proseLines) {
+    const trimmed = text.trim();
+    if (!trimmed || isDivider(trimmed) || isStructural(trimmed) || /^【[^】]+】$/.test(trimmed)) continue;
+    narrativeParas += 1;
+    if (isDialogueParagraph(trimmed)) dialogueParas += 1;
+  }
+
+  if (narrativeParas === 0) return [];
+  const ratio = (dialogueParas / narrativeParas) * 100;
+
+  return [{
+    line: 1,
+    column: 1,
+    type: 'dialogue-density-stat',
+    severity: 'info',
+    message: `对话密度统计：独立成行对话/字条段 ${dialogueParas}/${narrativeParas} 段（${ratio.toFixed(1)}%）；对标参考区间 ${DIALOGUE_DENSITY_REFERENCE_LOW}-${DIALOGUE_DENSITY_REFERENCE_HIGH}%，独角戏/单向命令类场景天然更低，不是硬门槛，仅供节奏判断参考。`,
+    excerpt: `${dialogueParas}/${narrativeParas} (${ratio.toFixed(1)}%)`,
+  }];
+}
+
+// 独立成行对话/字条段：整段trim后以成对引号开头（「/『/【/"/'等），与"对话独立成行"格式规则同口径。
+function isDialogueParagraph(trimmed) {
+  return QUOTE_PAIRS.some(([open]) => trimmed.startsWith(open));
 }
