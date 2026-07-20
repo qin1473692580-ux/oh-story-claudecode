@@ -321,6 +321,9 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 
 ### Phase 3 完成门槛（进入 Phase 4 前必须通过）
 
+**错别字校验（本篇正文写完后第一步，先于其他所有检查）**：对实际落盘的 正文.md 运行 `node scripts/check-typos.js --check --fail-on=all 正文.md`。这一步专查错别字/形近字/音近字误用，跟风格/AI味/一致性是完全不同维度的问题，必须最先做——错字不管文风改成什么样都是错的。词典只收高置信度的固定搭配误写，命中全部是 advisory，脚本从不自动改写；先判断是不是项目里有意为之的风格化用词，确认是真错字才改。
+
+- [ ] `node scripts/check-typos.js --check --fail-on=all 正文.md` 已过一遍，命中的真错字已改
 - [ ] 总字数 ≥ 8000（优先用 Python 字符统计验证，兼容 Windows 和中文字符计数）
 - [ ] 每节 ≥ 800 字（爽文等高信息密度题材 ≥ 500 字，见 genre-writing-formulas.md）
 - [ ] 节数 = 小节大纲规划节数（不得合并/省略）
@@ -397,9 +400,11 @@ metadata: {"openclaw":{"source":"https://github.com/worldwonderer/oh-story-claud
 | [references/reversal-toolkit.md](references/reversal-toolkit.md) | 设计反转时 |
 | [references/quality-checklist.md](references/quality-checklist.md) | 精修检查时 |
 | [references/banned-words.md](references/banned-words.md) | 禁用词表 |
+| [scripts/check-typos.js](scripts/check-typos.js) | Phase 3 完成门槛第一步；写完后先查错别字/形近字/音近字，advisory 不自动改写 |
 | [scripts/normalize-punctuation.js](scripts/normalize-punctuation.js) | Phase 4 文件模式确定性标点收尾 |
 | [scripts/check-ai-patterns.js](scripts/check-ai-patterns.js) | Phase 3 完成门槛与 Phase 4 复扫；报告高危 AI 句式、破折号、碎句号、长段落、微动作复读、抽象总结、套词/比喻密度、解释链、系统公告腔、提纲感短段、低连接密度 |
 | [scripts/check-degeneration.js](scripts/check-degeneration.js) | Phase 3 完成门槛与 Phase 4 复扫；报告模型退化（复读/截断/工程词泄漏），blocking 需重新生成 |
+| [scripts/export-for-platform.js](scripts/export-for-platform.js) | 定稿后导出平台可直接粘贴格式（`###N.` 节标题转纯数字行） |
 | [references/dialogue-mastery.md](references/dialogue-mastery.md) | 写对话时 |
 | [references/output-contract.md](references/output-contract.md) | Phase 2 对标上下文加载时（理解 analyze 产出格式与消费规范） |
 
