@@ -6,7 +6,7 @@ const path = require('path');
 
 const USAGE = `Usage: node export-for-platform.js [--out=<dir>] [--join-blank-line] <file...>
 
-把 正文/第XXX章_*.md（长篇）或 短故事正文.md（###N. 小节制）批量转成可直接复制粘贴的纯文本
+把 正文/第XXX章_*.md（长篇）或 短故事正文.md（###N. 小节制，导出时转为"第X章"）批量转成可直接复制粘贴的纯文本
 （番茄小说、晋江等创作后台通常没有对外开放的自动发布 API，这一步只做格式转换，
 不做登录、不做提交、不碰任何账号凭证——发布仍需作者本人在平台后台手动操作）。
 
@@ -104,10 +104,13 @@ function parseChapter(input) {
       continue;
     }
 
-    // 短故事 ###N. 小节标记：去掉井号，保留裸序号行（番茄短故事编辑器接受 1. / 2. 分节）
+    // 短故事 ###N. 小节标记：转成"第X章"（中文数字）。实测证据：番茄短故事整篇上传后
+    // 平台目录里永远只算"共1章"，"###N."只是我们内部拆分小节的写作脚手架，不是平台
+    // 认的分节格式；真实已发布短故事里，作者若要在正文内保留可见节奏断点，用的是
+    // "第一章/第二章"这种长篇式写法（2026-07-20 抽查已发布短故事实测确认），不是裸数字。
     const shortSection = trimmed.match(/^#{1,6}\s*(\d+)\.?\s*$/);
     if (shortSection) {
-      paragraphs.push(shortSection[1] + '.');
+      paragraphs.push(`第${toChineseNumeral(Number(shortSection[1]))}章`);
       continue;
     }
 
@@ -115,6 +118,19 @@ function parseChapter(input) {
   }
 
   return { title, paragraphs };
+}
+
+function toChineseNumeral(n) {
+  const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  if (n < 10) return digits[n];
+  if (n === 10) return '十';
+  if (n < 20) return `十${digits[n - 10]}`;
+  if (n < 100) {
+    const tens = Math.floor(n / 10);
+    const ones = n % 10;
+    return `${digits[tens]}十${ones === 0 ? '' : digits[ones]}`;
+  }
+  return String(n);
 }
 
 function die(message) {
